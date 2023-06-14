@@ -360,7 +360,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
      */
     private fun populateWithLogs(snapshot: ExecutionSnapshot): Mono<ExecutionSnapshot> {
         return getLogs(snapshot.podSnapshot).map { ExecutionSnapshot(it, snapshot.jobSnapshot, snapshot.podSnapshot) }
-//            .onErrorComplete()
+            .onErrorComplete()
             .switchIfEmpty(snapshot.toMono())
     }
 
