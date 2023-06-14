@@ -1,8 +1,8 @@
 package bachelor.reactive.kubernetes.api
 
 import bachelor.reactive.kubernetes.api.snapshot.ExecutionSnapshot
-import bachelor.service.ClientException
-import bachelor.service.ServerException
+import bachelor.service.run.ClientException
+import bachelor.service.run.ServerException
 import calculations.runner.kubernetes.api.prettyString
 import java.time.Duration
 

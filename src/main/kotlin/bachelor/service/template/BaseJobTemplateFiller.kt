@@ -1,4 +1,4 @@
-package bachelor.service
+package bachelor.service.template
 
 import calculations.runner.kubernetes.template.JobTemplateFiller
 import calculations.runner.run.ImageRunRequest

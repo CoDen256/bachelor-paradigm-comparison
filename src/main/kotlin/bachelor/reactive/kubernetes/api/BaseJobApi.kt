@@ -1,8 +1,5 @@
-package bachelor.reactive.kubernetes
+package bachelor.reactive.kubernetes.api
 
-import bachelor.reactive.kubernetes.api.InvalidJobSpecException
-import bachelor.reactive.kubernetes.api.JobAlreadyExistsException
-import bachelor.reactive.kubernetes.api.JobApi
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.reactive.kubernetes.events.ResourceEventHandlerAdapter
 import io.fabric8.kubernetes.api.model.Pod

@@ -1,38 +1,28 @@
 package bachelor.imperative.kubernetes
 
-import bachelor.service.ClientException
-import bachelor.service.ServerException
-import bachelor.service.run.ImageRunner
-import calculations.runner.kubernetes.template.JobTemplateFiller
-import calculations.runner.kubernetes.template.JobTemplateProvider
-import calculations.runner.run.ImageRunRequest
+import bachelor.imperative.kubernetes.api.*
+import bachelor.service.run.ClientException
+import bachelor.service.run.ServerException
+import bachelor.service.executor.JobExecutionRequest
+import bachelor.service.executor.JobExecutor
 import org.apache.logging.log4j.LogManager
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-open class KubernetesJobRunner(
+class ImperativeJobExecutor(
     private val client: JobApiClient,
-    private val templateProvider: JobTemplateProvider,
-    private val jobTemplateSubstitutor: JobTemplateFiller,
-    private val readyTimeout: Long,
-    private val terminationTimeout: Long,
-) : AutoCloseable, ImageRunner {
+) : JobExecutor {
 
     private val logger = LogManager.getLogger()
 
-    override fun run(spec: ImageRunRequest): String? {
-        logger.info("Running ${spec.name} ${spec.script} [${spec.arguments}]")
 
-        val template = templateProvider.getTemplate()
-        logger.debug("Job Template:\n$template")
-        val jobSpec = jobTemplateSubstitutor.fill(template, spec)
-        logger.debug("Resolved Job Spec:\n$jobSpec")
-
+    override fun execute(request: JobExecutionRequest): String? {
         var job: JobReference? = null
         try {
-            job = client.createJob(jobSpec)
-            waitUntilReady(job)
-            waitUntilTerminated(job)
+            job = client.createJob(request.jobSpec)
+            waitUntilReady(job, request.isRunningTimeout)
+            waitUntilTerminated(job, request.isTerminatedTimeout)
 
             val status = client.getJobStatus(job)
 
@@ -40,13 +30,13 @@ open class KubernetesJobRunner(
 
             return status.logs?.let { String(it) }
         } catch (e: ClientException) {
-            logger.error("Client Exception occurred during execution of '${spec.name}'", e)
+            logger.error("Client Exception occurred during execution of '${request}'", e)
             throw e
         } catch (e: Exception) {
-            logger.error("Calculation failed unexpectedly during execution of '${spec.name}'", e)
+            logger.error("Calculation failed unexpectedly during execution of '${request}'", e)
             if (e is ServerException) throw e
             throw ServerException(
-                "Calculation '${spec.name}' failed unexpectedly\n${e.javaClass.simpleName}: ${e.message}",
+                "Calculation '${request}' failed unexpectedly\n${e.javaClass.simpleName}: ${e.message}",
                 e
             )
         } finally {
@@ -54,10 +44,10 @@ open class KubernetesJobRunner(
         }
     }
 
-    private fun waitUntilTerminated(job: JobReference) {
+    private fun waitUntilTerminated(job: JobReference, terminationTimeout: Duration) {
         val future = client.informOnTerminated(job)
         try {
-            future.get(terminationTimeout, TimeUnit.MILLISECONDS)
+            future.get(terminationTimeout.toMillis(), TimeUnit.MILLISECONDS)
         } catch (e: TimeoutException) {
             future.cancel(true)
             val status = client.getJobStatus(job)
@@ -65,10 +55,10 @@ open class KubernetesJobRunner(
         }
     }
 
-    private fun waitUntilReady(job: JobReference) {
+    private fun waitUntilReady(job: JobReference, readyTimeout: Duration) {
         val future = client.informOnReadyToReadLogs(job)
         try {
-            future.get(readyTimeout, TimeUnit.MILLISECONDS)
+            future.get(readyTimeout.toMillis(), TimeUnit.MILLISECONDS)
         } catch (e: TimeoutException) {
             future.cancel(true)
             val status = client.getJobStatus(job)
@@ -85,7 +75,4 @@ open class KubernetesJobRunner(
         }
     }
 
-    override fun close() {
-        client.close()
-    }
 }

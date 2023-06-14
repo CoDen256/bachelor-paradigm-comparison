@@ -1,6 +1,5 @@
 package bachelor.imperative.kubernetes.api
 
-import bachelor.imperative.kubernetes.*
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.PodList
 import io.fabric8.kubernetes.api.model.batch.v1.Job

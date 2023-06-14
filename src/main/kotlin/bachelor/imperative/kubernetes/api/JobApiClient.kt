@@ -1,7 +1,7 @@
-package bachelor.imperative.kubernetes
+package bachelor.imperative.kubernetes.api
 
-import bachelor.service.ClientException
-import bachelor.service.ServerException
+import bachelor.service.run.ClientException
+import bachelor.service.run.ServerException
 import java.util.concurrent.CompletableFuture
 
 

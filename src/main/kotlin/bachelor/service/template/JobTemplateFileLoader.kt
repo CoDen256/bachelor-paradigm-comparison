@@ -1,4 +1,4 @@
-package bachelor.service
+package bachelor.service.template
 
 import calculations.runner.kubernetes.template.JobTemplateProvider
 import org.apache.logging.log4j.LogManager

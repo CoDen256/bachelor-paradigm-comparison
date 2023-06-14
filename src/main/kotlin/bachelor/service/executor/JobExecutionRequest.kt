@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.executor
+package bachelor.service.executor
 
 import java.time.Duration
 

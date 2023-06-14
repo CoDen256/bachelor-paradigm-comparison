@@ -1,20 +1,19 @@
-package bachelor.reactive.kubernetes
+package bachelor.service.run
 
-import bachelor.reactive.kubernetes.executor.JobExecutionRequest
-import bachelor.reactive.kubernetes.executor.KubernetesJobExecutor
+import bachelor.service.executor.JobExecutionRequest
+import bachelor.reactive.kubernetes.ReactiveJobExecutor
+import bachelor.service.executor.JobExecutor
 import calculations.runner.kubernetes.template.JobTemplateFiller
 import calculations.runner.kubernetes.template.JobTemplateProvider
 import calculations.runner.run.ImageRunRequest
-import bachelor.service.run.ImageRunner
-import bachelor.service.ClientException
-import bachelor.service.ServerException
 import org.apache.logging.log4j.LogManager
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.toMono
 import java.time.Duration
 
 /**
- * [KubernetesJobImageRunner] is an [ImageRunner] based on
- * [KubernetesJobExecutor], that runs jobs on the kubernetes cluster. The
+ * [KubernetesBasedImageRunner] is an [ImageRunner] based on
+ * [ReactiveJobExecutor], that runs jobs on the kubernetes cluster. The
  * runner creates a job specification based on the template and values
  * provided from the [ImageRunRequest]. Then the job spec is used to create
  * a job within a kubernetes cluster that will run the desired image. The
@@ -32,13 +31,13 @@ import java.time.Duration
  * @property terminatedTimeout the timeout specifying the maximum amount of
  *     time to wait until the underlying pod is terminated
  */
-class KubernetesJobImageRunner(
-    private val jobExecutor: KubernetesJobExecutor,
+class KubernetesBasedImageRunner(
+    private val jobExecutor: JobExecutor,
     private val templateProvider: JobTemplateProvider,
     private val templateFiller: JobTemplateFiller,
     private val runningTimeout: Duration,
     private val terminatedTimeout: Duration
-) : ImageRunner {
+)  {
 
     private val logger = LogManager.getLogger()
 
@@ -50,7 +49,7 @@ class KubernetesJobImageRunner(
      *    job spec
      * 3) Creates an [JobExecutionRequest] containing the spec, and execution
      *    parameters
-     * 4) Executes [JobExecutionRequest] via [KubernetesJobExecutor] and
+     * 4) Executes [JobExecutionRequest] via [ReactiveJobExecutor] and
      *    returns the logs
      *
      * The preparation, template providing and fillings starts only upon the
@@ -59,7 +58,7 @@ class KubernetesJobImageRunner(
      * @param request the image to execute
      * @return logs of the executed image
      */
-    override fun run(request: ImageRunRequest): String? = Mono.defer {
+    fun run(request: ImageRunRequest): Mono<String> = Mono.defer {
         logger.info("Running $request")
 
         val template = templateProvider.getTemplate()
@@ -71,8 +70,8 @@ class KubernetesJobImageRunner(
         val executeJobRequest = JobExecutionRequest(jobSpec, runningTimeout, terminatedTimeout)
         logger.debug("Executing request:\n$executeJobRequest")
 
-        jobExecutor.executeAndReadLogs(executeJobRequest)
-    }.onErrorMap { mapToServerException(it, request) }.block()
+        jobExecutor.execute(executeJobRequest).toMono()
+    }.onErrorMap { mapToServerException(it, request) }
 
     private fun mapToServerException(it: Throwable, spec: ImageRunRequest): Throwable = when (it) {
         is ClientException, is ServerException -> it

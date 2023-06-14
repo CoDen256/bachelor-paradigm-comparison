@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.executor
+package bachelor.reactive.kubernetes
 
 import bachelor.reactive.kubernetes.api.JobApi
 import bachelor.reactive.kubernetes.api.PodNotRunningTimeoutException
@@ -7,6 +7,8 @@ import bachelor.reactive.kubernetes.api.PodTerminatedWithErrorException
 import bachelor.reactive.kubernetes.api.snapshot.*
 import calculations.runner.kubernetes.api.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.service.executor.JobExecutionRequest
+import bachelor.service.executor.JobExecutor
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import org.apache.logging.log4j.LogManager
@@ -17,11 +19,11 @@ import reactor.kotlin.core.publisher.toMono
 import java.time.Duration
 
 /**
- * [KubernetesJobExecutor] executes [JobExecutionRequest] by loading
+ * [ReactiveJobExecutor] executes [JobExecutionRequest] by loading
  * given job spec, creating it in the cluster and running it until its
  * termination.
  *
- * For given [JobExecutionRequest] the [KubernetesJobExecutor] executes it
+ * For given [JobExecutionRequest] the [ReactiveJobExecutor] executes it
  * as follows:
  * 1) Executes a request via [JobApi] to observe all events
  *    ([ResourceEvent]s) occurring in the given namespace both for jobs and
@@ -150,9 +152,14 @@ import java.time.Duration
 //                                               |
 //                                               V
 // result: ----------------------------------------------------0(Rdy + Term + [LOGS])----------------------|>
-class KubernetesJobExecutor(val api: JobApi) {
+class ReactiveJobExecutor(val api: JobApi): JobExecutor {
 
     private val logger = LogManager.getLogger()
+
+
+    override fun execute(request: JobExecutionRequest): String? {
+        return executeAndReadLogs(request).block()
+    }
 
     /**
      * Execute the given [JobExecutionRequest] and wait until it produces
@@ -404,4 +411,5 @@ class KubernetesJobExecutor(val api: JobApi) {
     private fun podEventToSnapshot(podEvent: ResourceEvent<Pod>): Mono<ActivePodSnapshot> {
         return podEvent.element?.snapshot(podEvent.action).toMono()
     }
+
 }
