@@ -5,6 +5,7 @@ import bachelor.service.run.ClientException
 import bachelor.service.run.ServerException
 import bachelor.service.executor.JobExecutionRequest
 import bachelor.service.executor.JobExecutor
+import bachelor.service.executor.snapshot.ExecutionSnapshot
 import org.apache.logging.log4j.LogManager
 import java.time.Duration
 import java.util.concurrent.TimeUnit
@@ -17,7 +18,7 @@ class ImperativeJobExecutor(
     private val logger = LogManager.getLogger()
 
 
-    override fun execute(request: JobExecutionRequest): String? {
+    override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
         var job: JobReference? = null
         try {
             job = client.createJob(request.jobSpec)
@@ -27,8 +28,8 @@ class ImperativeJobExecutor(
             val status = client.getJobStatus(job)
 
             verifySucceeded(status)
-
-            return status.logs?.let { String(it) }
+            return null!!
+//            return status.logs?.let { String(it) }
         } catch (e: ClientException) {
             logger.error("Client Exception occurred during execution of '${request}'", e)
             throw e

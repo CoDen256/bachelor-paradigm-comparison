@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.api.snapshot
+package bachelor.service.executor.snapshot
 
 /**
  * Execution snapshot or global snapshot represents a snapshot of the whole

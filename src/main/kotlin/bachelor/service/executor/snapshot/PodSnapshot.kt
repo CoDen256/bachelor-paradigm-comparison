@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.api.snapshot
+package bachelor.service.executor.snapshot
 
 import calculations.runner.kubernetes.api.getMainContainerState
 import calculations.runner.kubernetes.api.getPhase

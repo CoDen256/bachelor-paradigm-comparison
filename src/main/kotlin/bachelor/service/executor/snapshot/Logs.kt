@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.api.snapshot
+package bachelor.service.executor.snapshot
 
 import org.apache.commons.text.StringEscapeUtils
 

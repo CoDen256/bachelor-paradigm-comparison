@@ -4,11 +4,11 @@ import bachelor.reactive.kubernetes.api.JobApi
 import bachelor.reactive.kubernetes.api.PodNotRunningTimeoutException
 import bachelor.reactive.kubernetes.api.PodNotTerminatedTimeoutException
 import bachelor.reactive.kubernetes.api.PodTerminatedWithErrorException
-import bachelor.reactive.kubernetes.api.snapshot.*
 import calculations.runner.kubernetes.api.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.executor.JobExecutionRequest
 import bachelor.service.executor.JobExecutor
+import bachelor.service.executor.snapshot.*
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import org.apache.logging.log4j.LogManager
@@ -157,8 +157,8 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
     private val logger = LogManager.getLogger()
 
 
-    override fun execute(request: JobExecutionRequest): String? {
-        return executeAndReadLogs(request).block()
+    override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
+        return executeUntilTerminated(request).block() ?: ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot)
     }
 
     /**
