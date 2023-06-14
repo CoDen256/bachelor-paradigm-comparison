@@ -1,6 +1,6 @@
-package calculations.runner.run
+package bachelor.service.run
 
-import java.util.concurrent.CompletableFuture
+import calculations.runner.run.ImageRunRequest
 
 /**
  * The [ImageRunner] executes a specific image or, in other words, a script
@@ -9,19 +9,20 @@ import java.util.concurrent.CompletableFuture
  * asynchronous computation.
  *
  * The image to be executed, its version(tag), the target script and the
- * arguments to pass are provided via [ImageSpec]
+ * arguments to pass are provided via [ImageRunRequest]
  *
  * The callers of the [ImageRunner] should be unaware what platform or
- * engine is used to run the image. It could be Docker Daemon, Kubernetes
+ * engine is used to run the image. It could be a Docker Daemon, Kubernetes
  * Jobs or any other tool.
  */
 interface ImageRunner {
     /**
-     * Run an image defined by [ImageSpec] and return the result of execution.
+     * Run an image defined by [ImageRunRequest] and return the result of
+     * execution.
      *
-     * @param spec the image spec, defining an image, script and arguments to
-     *     run.
+     * @param request the image request, defining an image, script and
+     *     arguments to run.
      * @return the result of the execution
      */
-    fun run(spec: ImageSpec): CompletableFuture<String>
+    fun run(request: ImageRunRequest): String?
 }

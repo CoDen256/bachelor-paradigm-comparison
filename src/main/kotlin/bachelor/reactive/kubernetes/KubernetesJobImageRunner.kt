@@ -1,13 +1,13 @@
-package calculations.runner.kubernetes
+package bachelor.reactive.kubernetes
 
-import calculations.runner.kubernetes.executor.JobExecutionRequest
-import calculations.runner.kubernetes.executor.KubernetesJobExecutor
+import bachelor.reactive.kubernetes.executor.JobExecutionRequest
+import bachelor.reactive.kubernetes.executor.KubernetesJobExecutor
 import calculations.runner.kubernetes.template.JobTemplateFiller
 import calculations.runner.kubernetes.template.JobTemplateProvider
 import calculations.runner.run.ImageRunRequest
-import calculations.runner.run.ImageRunner
-import calculations.runner.service.ClientException
-import calculations.runner.service.ServerException
+import bachelor.service.run.ImageRunner
+import bachelor.service.ClientException
+import bachelor.service.ServerException
 import org.apache.logging.log4j.LogManager
 import reactor.core.publisher.Mono
 import java.time.Duration

@@ -1,4 +1,4 @@
-package calculations.runner.kubernetes.executor
+package bachelor.reactive.kubernetes.executor
 
 import java.time.Duration
 

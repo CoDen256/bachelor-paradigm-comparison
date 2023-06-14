@@ -1,4 +1,4 @@
-package calculations.runner.kubernetes.api.snapshot
+package bachelor.reactive.kubernetes.api.snapshot
 
 import org.apache.commons.text.StringEscapeUtils
 

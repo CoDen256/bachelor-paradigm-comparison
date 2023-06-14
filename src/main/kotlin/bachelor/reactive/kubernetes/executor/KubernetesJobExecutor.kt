@@ -1,8 +1,12 @@
-package calculations.runner.kubernetes.executor
+package bachelor.reactive.kubernetes.executor
 
+import bachelor.reactive.kubernetes.api.JobApi
+import bachelor.reactive.kubernetes.api.PodNotRunningTimeoutException
+import bachelor.reactive.kubernetes.api.PodNotTerminatedTimeoutException
+import bachelor.reactive.kubernetes.api.PodTerminatedWithErrorException
+import bachelor.reactive.kubernetes.api.snapshot.*
 import calculations.runner.kubernetes.api.*
-import calculations.runner.kubernetes.api.snapshot.*
-import calculations.runner.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.events.ResourceEvent
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import org.apache.logging.log4j.LogManager
@@ -349,7 +353,8 @@ class KubernetesJobExecutor(val api: JobApi) {
      */
     private fun populateWithLogs(snapshot: ExecutionSnapshot): Mono<ExecutionSnapshot> {
         return getLogs(snapshot.podSnapshot).map { ExecutionSnapshot(it, snapshot.jobSnapshot, snapshot.podSnapshot) }
-            .onErrorComplete().switchIfEmpty(snapshot.toMono())
+//            .onErrorComplete()
+            .switchIfEmpty(snapshot.toMono())
     }
 
     /**

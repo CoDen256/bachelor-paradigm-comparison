@@ -1,4 +1,4 @@
-package calculations.runner.service
+package bachelor.service
 
 /**
  * Represents an exception based on the client error or script execution.

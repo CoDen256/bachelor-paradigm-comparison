@@ -1,6 +1,6 @@
-package calculations.runner.kubernetes.template
+package bachelor.service
 
-import calculations.runner.kubernetes.JobTemplateProvider
+import calculations.runner.kubernetes.template.JobTemplateProvider
 import org.apache.logging.log4j.LogManager
 import java.io.File
 
@@ -10,9 +10,7 @@ import java.io.File
  *
  * @property templateFile the file of the template to provide
  */
-class JobTemplateFileLoader(
-    private val templateFile: File
-) : JobTemplateProvider {
+class JobTemplateFileLoader(private val templateFile: File) : JobTemplateProvider {
 
     private val logger = LogManager.getLogger()
 

@@ -1,18 +1,16 @@
-package calculations.runner.kubernetes
+package bachelor.reactive.kubernetes
 
-import calculations.runner.kubernetes.api.InvalidJobSpecException
-import calculations.runner.kubernetes.api.JobAlreadyExistsException
-import calculations.runner.kubernetes.api.JobApi
-import calculations.runner.kubernetes.events.ResourceEvent
-import calculations.runner.kubernetes.events.ResourceEventHandlerAdapter
+import bachelor.reactive.kubernetes.api.InvalidJobSpecException
+import bachelor.reactive.kubernetes.api.JobAlreadyExistsException
+import bachelor.reactive.kubernetes.api.JobApi
+import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.events.ResourceEventHandlerAdapter
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientException
 import io.fabric8.kubernetes.client.informers.SharedIndexInformer
 import org.apache.logging.log4j.LogManager
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.event.EventListener
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
@@ -44,7 +42,6 @@ class BaseJobApi(
     private var jobInformer: SharedIndexInformer<Job>? = null
     private var podInformer: SharedIndexInformer<Pod>? = null
 
-    @EventListener(ApplicationReadyEvent::class)
     override fun start() {
         jobInformer = informOnJobEvents(jobEventSink)
         podInformer = informOnPodEvents(podEventSink)

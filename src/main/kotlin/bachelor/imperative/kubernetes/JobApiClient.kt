@@ -1,7 +1,7 @@
-package calculations.runner.kubernetes
+package bachelor.imperative.kubernetes
 
-import calculations.runner.service.ClientException
-import calculations.runner.service.ServerException
+import bachelor.service.ClientException
+import bachelor.service.ServerException
 import java.util.concurrent.CompletableFuture
 
 

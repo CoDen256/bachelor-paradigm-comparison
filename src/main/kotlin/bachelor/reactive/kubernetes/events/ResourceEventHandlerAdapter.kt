@@ -1,4 +1,4 @@
-package calculations.runner.kubernetes.events
+package bachelor.reactive.kubernetes.events
 
 import io.fabric8.kubernetes.api.model.HasMetadata
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler

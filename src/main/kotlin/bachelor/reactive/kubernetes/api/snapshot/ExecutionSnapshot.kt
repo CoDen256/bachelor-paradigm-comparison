@@ -1,4 +1,4 @@
-package calculations.runner.kubernetes.api.snapshot
+package bachelor.reactive.kubernetes.api.snapshot
 
 /**
  * Execution snapshot or global snapshot represents a snapshot of the whole

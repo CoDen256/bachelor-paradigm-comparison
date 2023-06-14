@@ -1,6 +1,6 @@
-package calculations.runner.kubernetes.api
+package bachelor.reactive.kubernetes.api
 
-import calculations.runner.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.events.ResourceEvent
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import reactor.core.publisher.Flux

@@ -1,30 +1,31 @@
-package calculations.runner.kubernetes
+package bachelor.imperative.kubernetes
 
-import calculations.runner.service.ClientException
-import calculations.runner.service.ServerException
-import calculations.runner.run.ImageRunner
-import calculations.runner.run.ImageSpec
+import bachelor.service.ClientException
+import bachelor.service.ServerException
+import bachelor.service.run.ImageRunner
+import calculations.runner.kubernetes.template.JobTemplateFiller
+import calculations.runner.kubernetes.template.JobTemplateProvider
+import calculations.runner.run.ImageRunRequest
 import org.apache.logging.log4j.LogManager
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 open class KubernetesJobRunner(
     private val client: JobApiClient,
     private val templateProvider: JobTemplateProvider,
-    private val jobTemplateSubstitutor: JobTemplateSubstitutor,
+    private val jobTemplateSubstitutor: JobTemplateFiller,
     private val readyTimeout: Long,
     private val terminationTimeout: Long,
 ) : AutoCloseable, ImageRunner {
 
     private val logger = LogManager.getLogger()
 
-    override fun run(spec: ImageSpec): CompletableFuture<String> = CompletableFuture.supplyAsync {
+    override fun run(spec: ImageRunRequest): String? {
         logger.info("Running ${spec.name} ${spec.script} [${spec.arguments}]")
 
         val template = templateProvider.getTemplate()
         logger.debug("Job Template:\n$template")
-        val jobSpec = jobTemplateSubstitutor.substitute(template, spec)
+        val jobSpec = jobTemplateSubstitutor.fill(template, spec)
         logger.debug("Resolved Job Spec:\n$jobSpec")
 
         var job: JobReference? = null
@@ -37,14 +38,17 @@ open class KubernetesJobRunner(
 
             verifySucceeded(status)
 
-            return@supplyAsync status.logs?.let { String(it) }
+            return status.logs?.let { String(it) }
         } catch (e: ClientException) {
             logger.error("Client Exception occurred during execution of '${spec.name}'", e)
             throw e
         } catch (e: Exception) {
             logger.error("Calculation failed unexpectedly during execution of '${spec.name}'", e)
             if (e is ServerException) throw e
-            throw ServerException("Calculation '${spec.name}' failed unexpectedly\n${e.javaClass.simpleName}: ${e.message}", e)
+            throw ServerException(
+                "Calculation '${spec.name}' failed unexpectedly\n${e.javaClass.simpleName}: ${e.message}",
+                e
+            )
         } finally {
             job?.let { client.deleteJob(it) }
         }
@@ -73,7 +77,7 @@ open class KubernetesJobRunner(
     }
 
     private fun verifySucceeded(status: JobStatus) {
-        if (status.containerExitCode == null){
+        if (status.containerExitCode == null) {
             throw IllegalStateException("Invalid status code.\nJob Status:\n$status")
         }
         if (status.containerExitCode != 0) {

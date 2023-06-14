@@ -1,8 +1,8 @@
-package calculations.runner.kubernetes.api
+package bachelor.imperative.kubernetes.api
 
-import calculations.runner.kubernetes.*
-import calculations.runner.kubernetes.ContainerState
-import io.fabric8.kubernetes.api.model.*
+import bachelor.imperative.kubernetes.*
+import io.fabric8.kubernetes.api.model.Pod
+import io.fabric8.kubernetes.api.model.PodList
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable
@@ -11,7 +11,8 @@ import io.fabric8.kubernetes.client.dsl.ScalableResource
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.CompletableFuture
 
-open class BaseJobApiClient(private val client: KubernetesClient) : JobApiClient {
+open class BaseJobApiClient(private val client: KubernetesClient) :
+    JobApiClient {
 
     override fun createJob(jobSpec: String): JobReference {
         val jobResource = loadJob(jobSpec)
@@ -119,14 +120,15 @@ open class BaseJobApiClient(private val client: KubernetesClient) : JobApiClient
 
     private fun getJobConditions(job: Job): List<JobCondition> = job.status?.conditions?.map { mapJobCondition(it) } ?: emptyList()
 
-    private fun mapJobCondition(it: io.fabric8.kubernetes.api.model.batch.v1.JobCondition): JobCondition = JobCondition(it.status, it.message, it.type, it.reason)
+    private fun mapJobCondition(it: io.fabric8.kubernetes.api.model.batch.v1.JobCondition): JobCondition =
+        JobCondition(it.status, it.message, it.type, it.reason)
 
     private fun getMainContainerStatus(pod: Pod): io.fabric8.kubernetes.api.model.ContainerState? = getContainerStatuses(pod).firstOrNull()
 
     private fun getContainerStatuses(pod: Pod): List<io.fabric8.kubernetes.api.model.ContainerState> =
         pod.status?.containerStatuses?.mapNotNull { it?.state } ?: emptyList()
 
-    private fun getActiveContainerState(state: io.fabric8.kubernetes.api.model.ContainerState): ContainerState{
+    private fun getActiveContainerState(state: io.fabric8.kubernetes.api.model.ContainerState): ContainerState {
         return state.run {
             when {
                 terminated != null -> ContainerState(terminated.reason, terminated.message, terminated.javaClass.simpleName)
