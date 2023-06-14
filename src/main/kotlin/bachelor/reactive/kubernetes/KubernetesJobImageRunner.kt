@@ -59,7 +59,7 @@ class KubernetesJobImageRunner(
      * @param request the image to execute
      * @return logs of the executed image
      */
-    override fun run(request: ImageRunRequest): Mono<String> = Mono.defer {
+    override fun run(request: ImageRunRequest): String? = Mono.defer {
         logger.info("Running $request")
 
         val template = templateProvider.getTemplate()
@@ -72,7 +72,7 @@ class KubernetesJobImageRunner(
         logger.debug("Executing request:\n$executeJobRequest")
 
         jobExecutor.executeAndReadLogs(executeJobRequest)
-    }.onErrorMap { mapToServerException(it, request) }
+    }.onErrorMap { mapToServerException(it, request) }.block()
 
     private fun mapToServerException(it: Throwable, spec: ImageRunRequest): Throwable = when (it) {
         is ClientException, is ServerException -> it
