@@ -1,6 +1,5 @@
-package calculations.runner.kubernetes.api
+package bachelor.reactive.kubernetes.api
 
-import bachelor.reactive.kubernetes.api.snapshot.*
 import bachelor.reactive.kubernetes.events.Action
 import bachelor.service.executor.snapshot.*
 import io.fabric8.kubernetes.api.model.Pod
