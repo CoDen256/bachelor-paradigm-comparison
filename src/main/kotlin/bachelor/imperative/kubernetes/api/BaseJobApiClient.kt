@@ -25,6 +25,7 @@ open class BaseJobApiClient(private val client: KubernetesClient) :
 
     override fun informOnReadyToReadLogs(job: JobReference): CompletableFuture<Void> {
         return selectPodByJobLabel(job)
+//            .watch()
             .informOnCondition { podIsCreatedAndNotWaiting(it) }
             .thenAccept { }
     }
