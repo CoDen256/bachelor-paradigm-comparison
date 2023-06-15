@@ -1,7 +1,7 @@
 package bachelor.service.executor.snapshot
 
-import bachelor.reactive.kubernetes.api.getJobConditions
-import bachelor.reactive.kubernetes.api.getJobStatus
+import bachelor.service.api.getJobConditions
+import bachelor.service.api.getJobStatus
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 
 /**

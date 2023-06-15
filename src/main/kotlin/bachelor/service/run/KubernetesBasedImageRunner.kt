@@ -2,7 +2,10 @@ package bachelor.service.run
 
 import bachelor.service.executor.JobExecutionRequest
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
+import bachelor.service.executor.ClientException
 import bachelor.service.executor.JobExecutor
+import bachelor.service.executor.ServerException
+import bachelor.service.executor.snapshot.ExecutionSnapshot
 import calculations.runner.kubernetes.template.JobTemplateFiller
 import calculations.runner.kubernetes.template.JobTemplateProvider
 import calculations.runner.run.ImageRunRequest
@@ -58,7 +61,7 @@ class KubernetesBasedImageRunner(
      * @param request the image to execute
      * @return logs of the executed image
      */
-    fun run(request: ImageRunRequest): Mono<String> = Mono.defer {
+    fun run(request: ImageRunRequest): Mono<ExecutionSnapshot> = Mono.defer {
         logger.info("Running $request")
 
         val template = templateProvider.getTemplate()

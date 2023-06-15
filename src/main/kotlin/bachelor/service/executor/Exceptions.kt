@@ -1,4 +1,4 @@
-package bachelor.service.run
+package bachelor.service.executor
 
 /**
  * Represents an exception based on the client error or script execution.

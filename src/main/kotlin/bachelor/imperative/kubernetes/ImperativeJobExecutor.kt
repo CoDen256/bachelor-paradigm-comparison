@@ -1,8 +1,8 @@
 package bachelor.imperative.kubernetes
 
 import bachelor.imperative.kubernetes.api.*
-import bachelor.service.run.ClientException
-import bachelor.service.run.ServerException
+import bachelor.service.executor.ClientException
+import bachelor.service.executor.ServerException
 import bachelor.service.executor.JobExecutionRequest
 import bachelor.service.executor.JobExecutor
 import bachelor.service.executor.snapshot.ExecutionSnapshot

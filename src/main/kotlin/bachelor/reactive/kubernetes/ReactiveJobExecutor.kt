@@ -2,8 +2,8 @@ package bachelor.reactive.kubernetes
 
 import bachelor.reactive.kubernetes.api.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
-import bachelor.service.executor.JobExecutionRequest
-import bachelor.service.executor.JobExecutor
+import bachelor.service.api.snapshot
+import bachelor.service.executor.*
 import bachelor.service.executor.snapshot.*
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job

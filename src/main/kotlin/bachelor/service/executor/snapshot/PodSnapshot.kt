@@ -1,7 +1,7 @@
 package bachelor.service.executor.snapshot
 
-import bachelor.reactive.kubernetes.api.getMainContainerState
-import bachelor.reactive.kubernetes.api.getPhase
+import bachelor.service.api.getMainContainerState
+import bachelor.service.api.getPhase
 import io.fabric8.kubernetes.api.model.Pod
 
 /**

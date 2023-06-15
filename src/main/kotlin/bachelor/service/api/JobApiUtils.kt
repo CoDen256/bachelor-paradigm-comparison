@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.api
+package bachelor.service.api
 
 import bachelor.reactive.kubernetes.events.Action
 import bachelor.service.executor.snapshot.*
