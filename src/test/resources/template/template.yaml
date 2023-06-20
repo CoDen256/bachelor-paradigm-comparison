@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${CALCULATION_IMAGE_NAME}
+spec:
+  ttlSecondsAfterFinished: 20
+  activeDeadlineSeconds: 2000
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: ${CALCULATION_IMAGE_NAME}
+          image: docker.optimax.cloud/kubernetes/${CALCULATION_IMAGE_NAME}:${CALCULATION_IMAGE_TAG}
+          args: [ ${ARGUMENTS} ]
+          volumeMounts:
+            - mountPath: /test/cache/
+              name: cache
+          env:
+            - name: CACHE_PATH
+              value: /test/cache/
+            - name: FIRST_SECRET
+              value: 'f'
+            - name: SECOND_SECRET
+              value: "s"
+      restartPolicy: Never
+      volumes:
+        - name: cache
+          hostPath:
+            path: /home/docker/cache/${CALCULATION_IMAGE_NAME}
+            type: Directory

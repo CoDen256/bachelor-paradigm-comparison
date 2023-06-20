@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-script
+spec:
+  ttlSecondsAfterFinished: 20
+  activeDeadlineSeconds: 2000
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: test-script
+          image: docker.optimax.cloud/kubernetes/test-script:1.0
+          args: [ "script.py", "1", "10-10-2000 10:00:00", " hustensaft " ]
+          volumeMounts:
+            - mountPath: /test/cache/
+              name: cache
+          env:
+            - name: CACHE_PATH
+              value: /test/cache/
+            - name: FIRST_SECRET
+              value: 'f'
+            - name: SECOND_SECRET
+              value: "s"
+      restartPolicy: Never
+      volumes:
+        - name: cache
+          hostPath:
+            path: /home/docker/cache/test-script
+            type: Directory
