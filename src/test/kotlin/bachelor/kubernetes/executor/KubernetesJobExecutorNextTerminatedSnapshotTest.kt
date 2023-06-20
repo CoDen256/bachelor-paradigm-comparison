@@ -5,7 +5,6 @@ import bachelor.reactive.kubernetes.api.JobApi
 import bachelor.reactive.kubernetes.events.Action.*
 import bachelor.service.api.snapshot
 import bachelor.service.executor.*
-import bachelor.service.executor.snapshot.*
 import io.fabric8.kubernetes.api.model.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -18,6 +17,10 @@ import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.just
 import reactor.test.StepVerifier
 import bachelor.kubernetes.utils.*
+import bachelor.service.api.snapshot.ExecutionSnapshot
+import bachelor.service.api.snapshot.InitialJobSnapshot
+import bachelor.service.api.snapshot.InitialPodSnapshot
+import bachelor.service.api.snapshot.Logs
 import java.time.Duration
 import java.util.concurrent.TimeoutException
 

@@ -6,7 +6,6 @@ import bachelor.reactive.kubernetes.events.Action.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.snapshot
 import bachelor.service.executor.*
-import bachelor.service.executor.snapshot.*
 import io.fabric8.kubernetes.api.model.*
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import org.apache.logging.log4j.LogManager
@@ -23,6 +22,10 @@ import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
 import reactor.test.StepVerifier
 import bachelor.kubernetes.utils.*
+import bachelor.service.api.snapshot.ActivePodSnapshot
+import bachelor.service.api.snapshot.ExecutionSnapshot
+import bachelor.service.api.snapshot.Logs
+import bachelor.service.api.snapshot.TerminatedState
 import java.time.Duration
 
 /**

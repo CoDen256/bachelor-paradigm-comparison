@@ -1,7 +1,7 @@
 package bachelor.service.executor
 
 import bachelor.service.api.prettyString
-import bachelor.service.executor.snapshot.ExecutionSnapshot
+import bachelor.service.api.snapshot.ExecutionSnapshot
 import java.time.Duration
 
 /**

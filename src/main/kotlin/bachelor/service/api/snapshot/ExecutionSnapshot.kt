@@ -1,4 +1,4 @@
-package bachelor.service.executor.snapshot
+package bachelor.service.api.snapshot
 
 /**
  * Execution snapshot or global snapshot represents a snapshot of the whole

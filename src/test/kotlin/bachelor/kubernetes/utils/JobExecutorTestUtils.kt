@@ -4,7 +4,7 @@ package bachelor.kubernetes.utils
 import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.snapshot
-import bachelor.service.executor.snapshot.ActivePodSnapshot
+import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.utils.DelayedEmitterBuilder
 import io.fabric8.kubernetes.api.model.*
 import io.fabric8.kubernetes.api.model.ContainerState

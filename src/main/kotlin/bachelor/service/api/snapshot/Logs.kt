@@ -1,4 +1,4 @@
-package bachelor.service.executor.snapshot
+package bachelor.service.api.snapshot
 
 import org.apache.commons.text.StringEscapeUtils
 

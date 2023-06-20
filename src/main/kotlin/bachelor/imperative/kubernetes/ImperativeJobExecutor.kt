@@ -5,7 +5,7 @@ import bachelor.service.executor.ClientException
 import bachelor.service.executor.ServerException
 import bachelor.service.executor.JobExecutionRequest
 import bachelor.service.executor.JobExecutor
-import bachelor.service.executor.snapshot.ExecutionSnapshot
+import bachelor.service.api.snapshot.ExecutionSnapshot
 import org.apache.logging.log4j.LogManager
 import java.time.Duration
 import java.util.concurrent.TimeUnit

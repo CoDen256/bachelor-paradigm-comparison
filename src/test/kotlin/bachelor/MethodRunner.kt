@@ -8,6 +8,7 @@ import bachelor.service.utils.BaseJobTemplateFiller
 import bachelor.service.utils.JobTemplateFileLoader
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
@@ -27,6 +28,7 @@ class MethodRunner {
     private val templateFiller = BaseJobTemplateFiller()
 
     @Test
+    @Disabled
     fun reactiveJobExecutor() {
         api.start()
 

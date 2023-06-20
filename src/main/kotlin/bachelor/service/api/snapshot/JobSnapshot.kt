@@ -1,4 +1,4 @@
-package bachelor.service.executor.snapshot
+package bachelor.service.api.snapshot
 
 import bachelor.service.api.getJobConditions
 import bachelor.service.api.getJobStatus

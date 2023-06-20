@@ -1,7 +1,7 @@
 package bachelor.service.api
 
 import bachelor.reactive.kubernetes.events.Action
-import bachelor.service.executor.snapshot.*
+import bachelor.service.api.snapshot.*
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.ContainerState as KubernetesContainerState

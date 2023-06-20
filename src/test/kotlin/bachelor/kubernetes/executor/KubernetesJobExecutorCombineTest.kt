@@ -1,11 +1,12 @@
 package bachelor.kubernetes.executor
 
+import bachelor.kubernetes.utils.*
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
 import bachelor.reactive.kubernetes.api.JobApi
 import bachelor.reactive.kubernetes.events.Action.*
 import bachelor.service.api.snapshot
+import bachelor.service.api.snapshot.*
 import bachelor.service.executor.*
-import bachelor.service.executor.snapshot.*
 import io.fabric8.kubernetes.api.model.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -15,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import bachelor.kubernetes.utils.*
 
 /**
  * Tests pertaining [KubernetesJobExecutor.filterAndCombineSnapshots]
