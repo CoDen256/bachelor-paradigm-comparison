@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="15">
+    <!-- https://logging.apache.org/log4j/2.x/manual/layouts.html#PatternLayout -->
+    <Properties>
+        <Property name="LOG_PATTERN">%d{dd.MM.yy HH:mm:ss} %level{length=5} [%t] %c{1.} - %msg%throwable{full}%n</Property>
+        <!-- Application name and group. Used in log file names and Graylog search. -->
+        <Property name="appName">calculation-runner</Property>
+    </Properties>
+    <Appenders>
+        <Console name="STDOUT" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}" alwaysWriteExceptions="false" />
+            <LevelRangeFilter minLevel="INFO" maxLevel="ALL" onMatch="ACCEPT" onMismatch="DENY" />
+        </Console>
+        <Console name="STDERR" target="SYSTEM_ERR">
+            <PatternLayout pattern="${LOG_PATTERN}" alwaysWriteExceptions="false" />
+            <LevelRangeFilter minLevel="FATAL" maxLevel="WARN" onMatch="ACCEPT" onMismatch="DENY" />
+        </Console>
+        <RollingFile name="FILE" fileName="logs/${appName}.log" filePattern="logs/${appName}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}%ex" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="20 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10" />
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Root level="all">
+            <AppenderRef ref="STDOUT" level="DEBUG" />
+            <AppenderRef ref="STDERR" level="WARN" />
+            <AppenderRef ref="FILE" level="INFO" />
+        </Root>
+    </Loggers>
+</Configuration>
