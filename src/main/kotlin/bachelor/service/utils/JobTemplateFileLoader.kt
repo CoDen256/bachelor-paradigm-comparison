@@ -1,6 +1,5 @@
-package bachelor.service.template
+package bachelor.service.utils
 
-import calculations.runner.kubernetes.template.JobTemplateProvider
 import org.apache.logging.log4j.LogManager
 import java.io.File
 

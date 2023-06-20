@@ -1,4 +1,6 @@
-package calculations.runner.run
+package bachelor.service.run
+
+import java.time.Duration
 
 /**
  * The [ImageRunRequest] defines a request to run a specific image. It
@@ -17,14 +19,24 @@ package calculations.runner.run
  *     upon invoking
  * @property tag the tag of the image, "latest" by default
  */
-data class ImageRunRequest(val name: String, val script: String, val arguments: List<String>, val tag: String) {
+data class ImageRunRequest(
+    val name: String,
+    val script: String,
+    val arguments: List<String>,
+    val tag: String
+) {
 
     override fun toString(): String {
         return "$name:$tag/$script[$arguments]"
     }
 
     companion object {
-        fun from(imageName: String, script: String, arguments: List<String>, tag: String? = null): ImageRunRequest {
+        fun from(
+            imageName: String,
+            script: String,
+            arguments: List<String>,
+            tag: String? = null
+        ): ImageRunRequest {
             return ImageRunRequest(imageName, script, arguments, tag ?: "latest")
         }
     }

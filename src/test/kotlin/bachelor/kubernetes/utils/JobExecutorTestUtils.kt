@@ -1,4 +1,4 @@
-package runner.kubernetes.utils
+package bachelor.kubernetes.utils
 
 
 import bachelor.reactive.kubernetes.events.Action

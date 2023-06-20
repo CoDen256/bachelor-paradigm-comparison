@@ -1,14 +1,13 @@
 package bachelor.service.run
 
-import bachelor.service.executor.JobExecutionRequest
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
 import bachelor.service.executor.ClientException
+import bachelor.service.executor.JobExecutionRequest
 import bachelor.service.executor.JobExecutor
 import bachelor.service.executor.ServerException
 import bachelor.service.executor.snapshot.ExecutionSnapshot
-import calculations.runner.kubernetes.template.JobTemplateFiller
-import calculations.runner.kubernetes.template.JobTemplateProvider
-import calculations.runner.run.ImageRunRequest
+import bachelor.service.utils.JobTemplateFiller
+import bachelor.service.utils.JobTemplateProvider
 import org.apache.logging.log4j.LogManager
 import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.toMono
@@ -37,10 +36,8 @@ import java.time.Duration
 class KubernetesBasedImageRunner(
     private val jobExecutor: JobExecutor,
     private val templateProvider: JobTemplateProvider,
-    private val templateFiller: JobTemplateFiller,
-    private val runningTimeout: Duration,
-    private val terminatedTimeout: Duration
-)  {
+    private val templateFiller: JobTemplateFiller
+) {
 
     private val logger = LogManager.getLogger()
 
@@ -52,8 +49,8 @@ class KubernetesBasedImageRunner(
      *    job spec
      * 3) Creates an [JobExecutionRequest] containing the spec, and execution
      *    parameters
-     * 4) Executes [JobExecutionRequest] via [ReactiveJobExecutor] and
-     *    returns the logs
+     * 4) Executes [JobExecutionRequest] via [ReactiveJobExecutor] and returns
+     *    the logs
      *
      * The preparation, template providing and fillings starts only upon the
      * subscription
@@ -61,7 +58,10 @@ class KubernetesBasedImageRunner(
      * @param request the image to execute
      * @return logs of the executed image
      */
-    fun run(request: ImageRunRequest): Mono<ExecutionSnapshot> = Mono.defer {
+    fun run(
+        request: ImageRunRequest, runningTimeout: Duration,
+        terminatedTimeout: Duration
+    ): Mono<ExecutionSnapshot> = Mono.defer {
         logger.info("Running $request")
 
         val template = templateProvider.getTemplate()

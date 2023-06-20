@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${CALCULATION_IMAGE_NAME}
+  namespace: calculations
+spec:
+  ttlSecondsAfterFinished: 10 # How long job will stay alive after finished. If deleted before
+  activeDeadlineSeconds: 300 # Timeout for the job to finish. Managed by the Kubernetes cluster itself
+  backoffLimit: 0 # Do not retry if failed
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: ${CALCULATION_IMAGE_NAME}
+          image: docker.optimax.cloud/kubernetes/${CALCULATION_IMAGE_NAME}:${CALCULATION_IMAGE_TAG}
+          args: [ ${ARGUMENTS} ]
+          volumeMounts:
+            - name: cache
+              mountPath: /app/cache/
+            - name: db-secrets
+              mountPath: /app/sql
+          env:
+            - name: CACHE_PATH
+              value: /app/cache/
+            - name: MYSQL_CONFIG_PATH
+              value: /app/sql/mysql.cnf
+          imagePullPolicy: Always
+      restartPolicy: Never
+      volumes:
+        - name: db-secrets
+          secret:
+            secretName: calculation-db-secrets
+        - name: cache
+          emptyDir: { }
+          #hostPath: # scp -r C:\dev\calculation-runner\cache\ docker@172.17.154.113:/home/docker/cache
+          #path: /home/docker/cache/${CALCULATION_IMAGE_NAME}
+          #type: Directory

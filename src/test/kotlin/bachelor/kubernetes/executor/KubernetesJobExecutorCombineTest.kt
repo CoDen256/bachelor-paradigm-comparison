@@ -1,4 +1,4 @@
-package runner.kubernetes.executor
+package bachelor.kubernetes.executor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
 import bachelor.reactive.kubernetes.api.JobApi
@@ -15,7 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import runner.kubernetes.utils.*
+import bachelor.kubernetes.utils.*
 
 /**
  * Tests pertaining [KubernetesJobExecutor.filterAndCombineSnapshots]

@@ -1,7 +1,6 @@
-package bachelor.service.template
+package bachelor.service.utils
 
-import calculations.runner.kubernetes.template.JobTemplateFiller
-import calculations.runner.run.ImageRunRequest
+import bachelor.service.run.ImageRunRequest
 import org.apache.commons.text.StringSubstitutor
 
 /**

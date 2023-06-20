@@ -1,6 +1,6 @@
-package calculations.runner.kubernetes.template
+package bachelor.service.utils
 
-import calculations.runner.run.ImageRunRequest
+import bachelor.service.run.ImageRunRequest
 
 /**
  * The [JobTemplateFiller] generates a job definition (job spec) by

@@ -1,7 +1,7 @@
-package runner.template
+package bachelor.template
 
-import bachelor.service.template.BaseJobTemplateFiller
-import calculations.runner.run.ImageRunRequest
+import bachelor.service.utils.BaseJobTemplateFiller
+import bachelor.service.run.ImageRunRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

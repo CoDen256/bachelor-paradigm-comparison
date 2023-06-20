@@ -1,4 +1,4 @@
-package runner.utils
+package bachelor.utils
 
 import bachelor.service.utils.DelayedEmitterBuilder
 import org.junit.jupiter.api.Test

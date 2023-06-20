@@ -1,4 +1,4 @@
-package runner.kubernetes.executor
+package bachelor.kubernetes.executor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
 import bachelor.reactive.kubernetes.api.JobApi
@@ -17,7 +17,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.just
 import reactor.test.StepVerifier
-import runner.kubernetes.utils.*
+import bachelor.kubernetes.utils.*
 import java.time.Duration
 import java.util.concurrent.TimeoutException
 

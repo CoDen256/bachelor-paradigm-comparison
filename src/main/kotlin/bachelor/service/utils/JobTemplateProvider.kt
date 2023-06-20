@@ -1,4 +1,4 @@
-package calculations.runner.kubernetes.template
+package bachelor.service.utils
 
 /**
  * The [JobTemplateProvider] provides a Kubernetes Job Template, containing
