@@ -28,12 +28,16 @@ class MethodRunner {
 
     @Test
     fun reactiveJobExecutor() {
+        api.start()
+
         val executor = ReactiveJobExecutor(api)
         KubernetesBasedImageRunner(executor, templateLoader, templateFiller)
             .run(
                 ImageRunRequest.from("test-rscript", "main.R", listOf("1", "2", "3"),"latest"),
                 Duration.ofSeconds(50), Duration.ofSeconds(50),
-            ).subscribe {
+            ).doOnEach {
+                println(it)
+            }.subscribe {
                 println(it)
             }
     }

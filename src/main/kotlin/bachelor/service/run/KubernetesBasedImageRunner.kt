@@ -65,13 +65,13 @@ class KubernetesBasedImageRunner(
         logger.info("Running $request")
 
         val template = templateProvider.getTemplate()
-        logger.debug("Job Template:\n$template")
+        logger.debug("Job Template:\n {}, ", template)
 
         val jobSpec = templateFiller.fill(template, request)
-        logger.debug("Resolved Job Spec:\n$jobSpec")
+        logger.debug("Resolved Job Spec:\n{}", jobSpec)
 
         val executeJobRequest = JobExecutionRequest(jobSpec, runningTimeout, terminatedTimeout)
-        logger.debug("Executing request:\n$executeJobRequest")
+        logger.debug("Executing request:\n {} ", executeJobRequest)
 
         jobExecutor.execute(executeJobRequest).toMono()
     }.onErrorMap { mapToServerException(it, request) }
