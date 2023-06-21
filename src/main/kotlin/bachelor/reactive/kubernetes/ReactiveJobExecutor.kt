@@ -2,6 +2,7 @@ package bachelor.reactive.kubernetes
 
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.ReactiveJobApi
+import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot
 import bachelor.service.api.snapshot.*
 import bachelor.service.executor.*
@@ -367,7 +368,7 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
      */
     private fun getLogs(podSnapshot: PodSnapshot): Mono<Logs> {
         if (podSnapshot !is ActivePodSnapshot) return Mono.empty()
-        return api.getLogs(podSnapshot.pod).map { Logs(it) }
+        return api.getLogs(PodReference(podSnapshot.pod.metadata.name, podSnapshot.pod.metadata.namespace ?: "", podSnapshot.pod.metadata.labels["controller-uid"] ?: "")).map { Logs(it) }
     }
 
     /**

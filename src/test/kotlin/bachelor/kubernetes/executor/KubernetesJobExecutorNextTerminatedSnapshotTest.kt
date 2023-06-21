@@ -68,7 +68,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     
@@ -88,7 +88,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -110,7 +110,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -132,7 +132,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -154,7 +154,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -185,7 +185,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -214,7 +214,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
             .verifyComplete()
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
 
@@ -255,7 +255,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodNotTerminatedTimeoutException> {
                 assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -278,7 +278,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodNotTerminatedTimeoutException> {
                 assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -303,7 +303,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodNotRunningTimeoutException> {
                 assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -326,7 +326,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodNotRunningTimeoutException> {
                 assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -354,7 +354,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodNotTerminatedTimeoutException> {
                 assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
 
@@ -378,7 +378,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodTerminatedWithErrorException> {
                 assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test
@@ -401,7 +401,7 @@ class KubernetesJobExecutorNextTerminatedSnapshotTest {
             .verifyError<PodTerminatedWithErrorException> {
                 assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()), it.currentState)
             }
-        verify(api).getLogs(expected)
+        verify(api).getLogs(expected.reference())
     }
 
     @Test

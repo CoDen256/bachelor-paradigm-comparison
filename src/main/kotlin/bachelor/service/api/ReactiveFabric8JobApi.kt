@@ -3,6 +3,7 @@ package bachelor.service.api
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.reactive.kubernetes.events.ResourceEventHandlerAdapter
 import bachelor.service.api.resources.JobReference
+import bachelor.service.api.resources.PodReference
 import bachelor.service.executor.InvalidJobSpecException
 import bachelor.service.executor.JobAlreadyExistsException
 import io.fabric8.kubernetes.api.model.Pod
@@ -22,10 +23,11 @@ import java.nio.charset.StandardCharsets
  * [KubernetesClient] and providing methods to execute request in a
  * reactive manner.
  *
- * The [ReactiveFabric8JobApi] uses internally to [Sinks.Many] sinks to capture all
- * the events produced by [SharedIndexInformer] both for pods and jobs. The
- * sinks will be later exposed to the client as [Flux] allowing clients to
- * subscribe to all events occurring in the given [namespace]
+ * The [ReactiveFabric8JobApi] uses internally to [Sinks.Many] sinks to
+ * capture all the events produced by [SharedIndexInformer] both for pods
+ * and jobs. The sinks will be later exposed to the client as [Flux]
+ * allowing clients to subscribe to all events occurring in the given
+ * [namespace]
  */
 class ReactiveFabric8JobApi(
     private val api: KubernetesClient,
@@ -58,7 +60,10 @@ class ReactiveFabric8JobApi(
             return InvalidJobSpecException("Unable to parse job spec: ${e.message}", e).toMono()
         } catch (e: KubernetesClientException) {
             if (e.code == 409)
-                return JobAlreadyExistsException("Unable to create a new job, the job already exists: ${e.message}", e).toMono()
+                return JobAlreadyExistsException(
+                    "Unable to create a new job, the job already exists: ${e.message}",
+                    e
+                ).toMono()
             return e.toMono()
         } catch (e: Exception) {
             return e.toMono()
@@ -96,10 +101,13 @@ class ReactiveFabric8JobApi(
             .inform(ResourceEventHandlerAdapter(sink))
     }
 
-    override fun getLogs(pod: Pod): Mono<String> {
-        logger.info("Getting logs for ${pod.metadata?.name}...")
+    override fun getLogs(pod: PodReference): Mono<String> {
+        logger.info("Getting logs for ${pod.name}...")
         return try {
-            api.pods().resource(pod).log.toMono()
+            api.pods()
+                .inNamespace(pod.namespace)
+                .withName(pod.name)
+                .log.toMono()
         } catch (exception: Exception) {
             exception.toMono()
         }

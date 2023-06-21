@@ -3,6 +3,7 @@ package bachelor.kubernetes.utils
 
 import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.utils.DelayedEmitterBuilder
@@ -19,6 +20,8 @@ import java.time.Duration
 
 const val TARGET_JOB = "JOB-ID"
 const val TARGET_POD = "POD-ID"
+
+fun Pod.reference() = PodReference(this.metadata.name, this.metadata.namespace ?: "", this.metadata.labels["controller-uid"] ?: "")
 
 // EVENTS
 fun <T : HasMetadata> noop() = ResourceEvent<T>(Action.NOOP, null)

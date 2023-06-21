@@ -2,6 +2,7 @@ package bachelor.service.api
 
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.resources.JobReference
+import bachelor.service.api.resources.PodReference
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import reactor.core.publisher.Flux
@@ -72,5 +73,5 @@ interface ReactiveJobApi : AutoCloseable {
      * @param pod the pod, which logs to request
      * @return the logs
      */
-    fun getLogs(pod: Pod): Mono<String>
+    fun getLogs(pod: PodReference): Mono<String>
 }

@@ -1,6 +1,8 @@
 package bachelor.service.api
 
+import bachelor.kubernetes.utils.reference
 import bachelor.service.api.resources.JobReference
+import bachelor.service.api.resources.PodReference
 import bachelor.service.utils.BaseJobTemplateFiller
 import bachelor.service.utils.JobTemplateFileLoader
 import io.fabric8.kubernetes.api.model.Pod
@@ -62,7 +64,7 @@ class ReactiveFabric8JobApiTest {
         val api = ReactiveFabric8JobApi(client, namespace)
         val job = api.createAndVerifyJobCreated(10, 20)
         val pod = verifyPodCreated(job)
-        println(pod.metadata.name)
+        println(pod.name)
 
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_READY_TIMEOUT))
@@ -80,7 +82,7 @@ class ReactiveFabric8JobApiTest {
         val api = ReactiveFabric8JobApi(client, namespace)
         val job = api.createAndVerifyJobCreated(0, 20)
         val pod = verifyPodCreated(job)
-        println(pod.metadata.name)
+        println(pod.name)
 
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_TERMINATED_TIMEOUT))
@@ -103,19 +105,21 @@ class ReactiveFabric8JobApiTest {
         return job
     }
 
-    private fun verifyPodCreated(job: JobReference): Pod {
-        val pod = AtomicReference<Pod>()
+    private fun verifyPodCreated(job: JobReference): PodReference {
+        val pod = AtomicReference<PodReference>()
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_CREATED_TIMEOUT))
             .until { findPod(job)?.let { pod.set(it) } != null }
         return pod.get()
     }
 
-    private fun podIsTerminated(pod: Pod): Boolean {
+    private fun podIsTerminated(ref: PodReference): Boolean {
+        val pod = client.pods().inNamespace(ref.namespace).withName(ref.name).get()
         return pod.status.containerStatuses[0].state.terminated != null
     }
 
-    private fun podIsReady(pod: Pod): Boolean {
+    private fun podIsReady(ref: PodReference): Boolean {
+        val pod = client.pods().inNamespace(ref.namespace).withName(ref.name).get()
         return pod.status.containerStatuses[0].state.let {
             it.running != null || it.terminated != null
         }
@@ -141,15 +145,17 @@ class ReactiveFabric8JobApiTest {
             .log ()
     }
 
-    private fun findPod(job: JobReference): Pod? {
-        return getPods().find { it.metadata.labels["controller-uid"] == job.uid }
+    private fun findPod(job: JobReference): PodReference? {
+        return getPods().find { it.jobId == job.uid }
     }
 
-    private fun getPods(): List<Pod> {
+
+    private fun getPods(): List<PodReference> {
         return client.pods().inNamespace(namespace)
             .list()
             .items
-//            .log()
+            .map { it.reference() }
+            .log()
     }
 
     private fun resolveSpec(executionTime: Long, ttl: Long): String {
