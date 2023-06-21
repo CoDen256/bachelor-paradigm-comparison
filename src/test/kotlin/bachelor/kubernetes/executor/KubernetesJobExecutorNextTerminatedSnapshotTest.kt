@@ -1,7 +1,7 @@
 package bachelor.kubernetes.executor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.service.api.JobApi
+import bachelor.service.api.ReactiveJobApi
 import bachelor.reactive.kubernetes.events.Action.*
 import bachelor.service.api.snapshot
 import bachelor.service.executor.*
@@ -32,7 +32,7 @@ import java.util.concurrent.TimeoutException
 class KubernetesJobExecutorNextTerminatedSnapshotTest {
 
     @Mock
-    lateinit var api: JobApi
+    lateinit var api: ReactiveJobApi
 
 
     private fun nextTerminatedSnapshot(stream: Flux<ExecutionSnapshot>,

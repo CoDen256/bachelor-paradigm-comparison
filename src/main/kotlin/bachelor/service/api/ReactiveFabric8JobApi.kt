@@ -17,19 +17,19 @@ import reactor.kotlin.core.publisher.toMono
 import java.nio.charset.StandardCharsets
 
 /**
- * Basic [JobApi] implementation acting as a wrapper around the
+ * Basic [ReactiveJobApi] implementation acting as a wrapper around the
  * [KubernetesClient] and providing methods to execute request in a
  * reactive manner.
  *
- * The [BaseJobApi] uses internally to [Sinks.Many] sinks to capture all
+ * The [ReactiveFabric8JobApi] uses internally to [Sinks.Many] sinks to capture all
  * the events produced by [SharedIndexInformer] both for pods and jobs. The
  * sinks will be later exposed to the client as [Flux] allowing clients to
  * subscribe to all events occurring in the given [namespace]
  */
-class BaseJobApi(
+class ReactiveFabric8JobApi(
     private val api: KubernetesClient,
     private val namespace: String
-) : JobApi {
+) : ReactiveJobApi {
 
     private val logger = LogManager.getLogger()
 

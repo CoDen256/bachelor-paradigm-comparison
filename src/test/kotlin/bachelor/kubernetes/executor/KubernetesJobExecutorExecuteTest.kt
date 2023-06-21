@@ -1,7 +1,7 @@
 package bachelor.kubernetes.executor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.service.api.JobApi
+import bachelor.service.api.ReactiveJobApi
 import bachelor.reactive.kubernetes.events.Action.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.snapshot
@@ -60,7 +60,7 @@ class KubernetesJobExecutorExecuteTest {
     private val originalJob = newJob(TARGET_JOB)
 
     @Mock
-    lateinit var api: JobApi
+    lateinit var api: ReactiveJobApi
 
     private fun run(isRunningTimeout: Duration, isTerminatedTimeout: Duration): Mono<ExecutionSnapshot> {
         return ReactiveJobExecutor(api)

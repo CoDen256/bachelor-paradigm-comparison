@@ -1,7 +1,7 @@
 package bachelor.reactive.kubernetes
 
 import bachelor.reactive.kubernetes.events.ResourceEvent
-import bachelor.service.api.JobApi
+import bachelor.service.api.ReactiveJobApi
 import bachelor.service.api.snapshot
 import bachelor.service.api.snapshot.*
 import bachelor.service.executor.*
@@ -21,7 +21,7 @@ import java.time.Duration
  *
  * For given [JobExecutionRequest] the [ReactiveJobExecutor] executes it
  * as follows:
- * 1) Executes a request via [JobApi] to observe all events
+ * 1) Executes a request via [ReactiveJobApi] to observe all events
  *    ([ResourceEvent]s) occurring in the given namespace both for jobs and
  *    pods. As a result, two [ResourceEventStream]s are created (for job
  *    events, as well as for pod events), which publish [ResourceEvent]s,
@@ -72,7 +72,7 @@ import java.time.Duration
  * 12) If [executeAndReadLogs] is called, and the resulting [Mono] is
  *     successful, then the logs are returned back to the caller
  *
- * @property api the underlying kubernetes [JobApi] that is used to execute
+ * @property api the underlying kubernetes [ReactiveJobApi] that is used to execute
  *     requests regarding kubernetes jobs
  */
 // An example, how the original two streams are transformed and filtered.
@@ -148,7 +148,7 @@ import java.time.Duration
 //                                               |
 //                                               V
 // result: ----------------------------------------------------0(Rdy + Term + [LOGS])----------------------|>
-class ReactiveJobExecutor(val api: JobApi): JobExecutor {
+class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
 
     private val logger = LogManager.getLogger()
 

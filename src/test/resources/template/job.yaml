@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: client-test
+  name: test-job
+spec:
+  ttlSecondsAfterFinished: 0
+  template:
+    spec:
+      containers:
+        - name: main
+          image: ${CALCULATION_IMAGE_NAME}:latest
+          command: [ "/bin/sh" ]
+          args: [ ${ARGUMENTS} ]
+      restartPolicy: Never

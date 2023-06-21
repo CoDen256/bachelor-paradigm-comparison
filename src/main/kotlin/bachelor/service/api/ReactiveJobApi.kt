@@ -7,10 +7,10 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
- * [JobApi] is a simplified Kubernetes API client for managing Kubernetes
+ * [ReactiveJobApi] is a simplified Kubernetes API client for managing Kubernetes
  * Jobs and observing events
  */
-interface JobApi : AutoCloseable {
+interface ReactiveJobApi : AutoCloseable {
 
     /** Starts the client and listening for the events */
     fun start()
