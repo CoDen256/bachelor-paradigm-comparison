@@ -1,7 +1,7 @@
 package bachelor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.reactive.kubernetes.api.BaseJobApi
+import bachelor.service.api.BaseJobApi
 import bachelor.service.run.ImageRunRequest
 import bachelor.service.run.KubernetesBasedImageRunner
 import bachelor.service.utils.BaseJobTemplateFiller
@@ -28,7 +28,6 @@ class MethodRunner {
     private val templateFiller = BaseJobTemplateFiller()
 
     @Test
-    @Disabled
     fun reactiveJobExecutor() {
         api.start()
 

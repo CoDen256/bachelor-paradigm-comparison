@@ -1,7 +1,7 @@
 package bachelor.reactive.kubernetes
 
-import bachelor.reactive.kubernetes.api.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.service.api.JobApi
 import bachelor.service.api.snapshot
 import bachelor.service.api.snapshot.*
 import bachelor.service.executor.*
