@@ -4,12 +4,13 @@ metadata:
   namespace: client-test
   name: test-job
 spec:
-  ttlSecondsAfterFinished: 0
+  ttlSecondsAfterFinished: ${TTL}
+  backoffLimit: 0
   template:
     spec:
       containers:
         - name: main
-          image: ${CALCULATION_IMAGE_NAME}:latest
+          image: busybox:latest
           command: [ "/bin/sh" ]
-          args: [ ${ARGUMENTS} ]
+          args: [ "-c", "echo start && sleep ${SLEEP} && echo slept ${SLEEP} && echo end" ]
       restartPolicy: Never

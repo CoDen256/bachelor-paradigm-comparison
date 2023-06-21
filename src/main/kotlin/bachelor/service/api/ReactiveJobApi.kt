@@ -35,7 +35,6 @@ interface ReactiveJobApi : AutoCloseable {
      * @param job the job to delete
      */
     fun delete(job: JobReference)
-    fun delete(job: Job)
 
     /**
      * Provides a [ResourceEvent] publisher, which internally via listeners

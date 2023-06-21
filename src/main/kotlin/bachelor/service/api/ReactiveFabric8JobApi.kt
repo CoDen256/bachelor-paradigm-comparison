@@ -73,10 +73,6 @@ class ReactiveFabric8JobApi(
             .delete()
     }
 
-    override fun delete(job: Job) {
-        api.batch().v1().jobs()
-            .resource(job).delete()
-    }
 
     override fun podEvents(): Flux<ResourceEvent<Pod>> {
         return cachedPodEvents

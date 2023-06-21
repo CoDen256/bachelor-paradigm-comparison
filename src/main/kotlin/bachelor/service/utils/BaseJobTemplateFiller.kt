@@ -37,6 +37,10 @@ class BaseJobTemplateFiller : JobTemplateFiller {
         )
     }
 
+    override fun fill(template: String, values: Map<String, String>): String {
+        return StringSubstitutor.replace(template, values)
+    }
+
     private fun substituteArguments(arguments: List<String>): String {
         return arguments.joinToString(", ") {
             "\"${it.replace("\"", "\\\"")}\""
