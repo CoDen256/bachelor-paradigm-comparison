@@ -44,7 +44,7 @@ class ReactiveFabric8JobApi(
     private var jobInformer: SharedIndexInformer<Job>? = null
     private var podInformer: SharedIndexInformer<Pod>? = null
 
-    override fun start() {
+    override fun startListeners() {
         jobInformer = informOnJobEvents(jobEventSink)
         podInformer = informOnPodEvents(podEventSink)
     }
@@ -115,10 +115,15 @@ class ReactiveFabric8JobApi(
 
     override fun close() {
         logger.info("Closing Job API client and all the informers...")
+        stopListeners()
+        api.close()
+    }
+
+    override fun stopListeners() {
+        logger.info("Stopping all the informers...")
         jobEventSink.tryEmitComplete()
         podEventSink.tryEmitComplete()
         jobInformer?.close()
         podInformer?.close()
-        api.close()
     }
 }

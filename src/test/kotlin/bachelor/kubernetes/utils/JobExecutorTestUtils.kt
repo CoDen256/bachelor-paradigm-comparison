@@ -18,8 +18,8 @@ import reactor.test.StepVerifier
 import java.lang.IllegalArgumentException
 import java.time.Duration
 
-const val TARGET_JOB = "JOB-ID"
-const val TARGET_POD = "POD-ID"
+const val TARGET_JOB = "target-job" // fake job id
+const val TARGET_POD = "target-pod" // fake pod id
 
 fun Pod.reference() = PodReference(this.metadata.name, this.metadata.namespace ?: "", this.metadata.labels["controller-uid"] ?: "")
 
@@ -35,14 +35,15 @@ fun upd(phase: String, targetState: KubernetesResource? = null) =
 fun del(phase: String, targetState: KubernetesResource? = null) =
     ResourceEvent(Action.DELETE, newPod(TARGET_POD, phase, TARGET_JOB, targetState))
 
-fun add(active: Int?, ready: Int?, succeeded: Int?, failed: Int?) =
-    ResourceEvent(Action.ADD, newJob(TARGET_JOB, active, ready, succeeded, failed))
+fun add(active: Int?, ready: Int?, succeeded: Int?, failed: Int?, name: String = TARGET_JOB) =
+    ResourceEvent(Action.ADD, newJob(name, active, ready, succeeded, failed))
 
-fun upd(active: Int?, ready: Int?, succeeded: Int?, failed: Int?) =
-    ResourceEvent(Action.UPDATE, newJob(TARGET_JOB, active, ready, succeeded, failed))
+fun upd(active: Int?, ready: Int?, succeeded: Int?, failed: Int?, name: String = TARGET_JOB) =
+    ResourceEvent(Action.UPDATE, newJob(name, active, ready, succeeded, failed))
 
-fun del(active: Int?, ready: Int?, succeeded: Int?, failed: Int?) =
-    ResourceEvent(Action.DELETE, newJob(TARGET_JOB, active, ready, succeeded, failed))
+fun del(active: Int?, ready: Int?, succeeded: Int?, failed: Int?, name: String = TARGET_JOB) =
+    ResourceEvent(Action.DELETE, newJob(name, active, ready, succeeded, failed))
+
 
 
 // JOB SNAPSHOT

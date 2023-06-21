@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono
 interface ReactiveJobApi : AutoCloseable {
 
     /** Starts the client and listening for the events */
-    fun start()
+    fun startListeners()
 
     /**
      * Loads given job spec, creates a job from the spec and runs it on the
@@ -74,4 +74,6 @@ interface ReactiveJobApi : AutoCloseable {
      * @return the logs
      */
     fun getLogs(pod: PodReference): Mono<String>
+
+    fun stopListeners()
 }

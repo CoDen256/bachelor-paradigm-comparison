@@ -28,7 +28,7 @@ class MethodRunner {
 
     @Test
     fun reactiveJobExecutor() {
-        api.start()
+        api.startListeners()
 
         val executor = ReactiveJobExecutor(api)
         KubernetesBasedImageRunner(executor, templateLoader, templateFiller)

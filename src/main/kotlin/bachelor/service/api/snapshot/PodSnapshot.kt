@@ -33,6 +33,25 @@ data class ActivePodSnapshot(val pod: Pod, val lastAction: String) : PodSnapshot
         return "Pod($name/$phase/$mainContainerState)[${lastAction.take(1)}]"
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ActivePodSnapshot) return false
+
+        if (lastAction != other.lastAction) return false
+        if (name != other.name) return false
+        if (mainContainerState != other.mainContainerState) return false
+        return phase == other.phase
+    }
+
+    override fun hashCode(): Int {
+        var result = lastAction.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + mainContainerState.hashCode()
+        result = 31 * result + phase.hashCode()
+        return result
+    }
+
+
 }
 
 sealed interface ContainerState

@@ -1,11 +1,14 @@
 package bachelor.service.api
 
+import bachelor.kubernetes.utils.TARGET_JOB
+import bachelor.kubernetes.utils.add
 import bachelor.kubernetes.utils.reference
+import bachelor.kubernetes.utils.upd
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
 import bachelor.service.utils.BaseJobTemplateFiller
 import bachelor.service.utils.JobTemplateFileLoader
-import io.fabric8.kubernetes.api.model.Pod
+import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
@@ -27,7 +30,6 @@ class ReactiveFabric8JobApiTest {
         JobTemplateFileLoader(File(ReactiveFabric8JobApiTest::class.java.getResource(jobSpecFile)!!.toURI()))
 
     private val namespace = "client-test"
-    private val JOB_NAME = "test-job"
     private val JOB_CREATED_TIMEOUT = 5L
     private val JOB_DELETED_TIMEOUT = 5L
     private val POD_CREATED_TIMEOUT = 5L
@@ -95,7 +97,22 @@ class ReactiveFabric8JobApiTest {
         api.deleteAndVerifyJobDeleted(job)
     }
 
+    @Test
+    fun jobEventsCreation() {
+        val api = ReactiveFabric8JobApi(client, namespace)
 
+        api.startListeners()
+        val job = api.createAndVerifyJobCreated(0, 20)
+        api.stopListeners()
+
+        val events = api.jobEvents().collectList().block()
+        assertThat(events).containsExactlyElementsIn(listOf(
+            add(null, null, null, null),
+            upd(1, 0, null, null)
+        ))
+
+        api.deleteAndVerifyJobDeleted(job)
+    }
 
     private fun ReactiveFabric8JobApi.createAndVerifyJobCreated(executionTime: Long, ttl: Long): JobReference {
         val job = create(resolveSpec(executionTime, ttl)).block()!!
@@ -134,7 +151,7 @@ class ReactiveFabric8JobApiTest {
 
 
     private fun jobExists(job: JobReference) = getJobs().any { (name, uid) ->
-        name == JOB_NAME && name == job.name && uid == job.uid
+        name == TARGET_JOB && name == job.name && uid == job.uid
     }
 
     private fun getJobs(): List<JobReference> {
@@ -161,6 +178,7 @@ class ReactiveFabric8JobApiTest {
     private fun resolveSpec(executionTime: Long, ttl: Long): String {
         return resolver.fill(
             jobSpecProvider.getTemplate(), mapOf(
+                "NAME" to TARGET_JOB,
                 "SLEEP" to "$executionTime",
                 "TTL" to "$ttl"
             )

@@ -35,6 +35,26 @@ data class ActiveJobSnapshot(val job: Job, val lastAction: String) : JobSnapshot
     override fun toString(): String {
         return "Job($name/$status${trueConditions.map { it.type }})[${lastAction.take(1)}]"
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ActiveJobSnapshot) return false
+
+        if (lastAction != other.lastAction) return false
+        if (name != other.name) return false
+        if (conditions != other.conditions) return false
+        return status == other.status
+    }
+
+    override fun hashCode(): Int {
+        var result = lastAction.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + conditions.hashCode()
+        result = 31 * result + status.hashCode()
+        return result
+    }
+
+
 }
 
 /**

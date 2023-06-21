@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   namespace: client-test
-  name: test-job
+  name: ${NAME}
 spec:
   ttlSecondsAfterFinished: ${TTL}
   backoffLimit: 0
