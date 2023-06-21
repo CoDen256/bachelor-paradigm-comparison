@@ -2,6 +2,7 @@ package bachelor.service.api
 
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.reactive.kubernetes.events.ResourceEventHandlerAdapter
+import bachelor.service.api.resources.JobReference
 import bachelor.service.executor.InvalidJobSpecException
 import bachelor.service.executor.JobAlreadyExistsException
 import io.fabric8.kubernetes.api.model.Pod
@@ -46,12 +47,13 @@ class ReactiveFabric8JobApi(
         podInformer = informOnPodEvents(podEventSink)
     }
 
-    override fun create(spec: String): Mono<Job> {
+    override fun create(spec: String): Mono<JobReference> {
         try {
             return api.batch().v1().jobs()
                 .load(spec.byteInputStream(StandardCharsets.UTF_8))
                 .create()
                 .toMono()
+                .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
         } catch (e: IllegalArgumentException) {
             return InvalidJobSpecException("Unable to parse job spec: ${e.message}", e).toMono()
         } catch (e: KubernetesClientException) {
@@ -63,9 +65,17 @@ class ReactiveFabric8JobApi(
         }
     }
 
+    override fun delete(job: JobReference) {
+        logger.info("Deleting job ${job.name}...")
+        api.batch().v1().jobs()
+            .inNamespace(job.namespace)
+            .withName(job.name)
+            .delete()
+    }
+
     override fun delete(job: Job) {
-        logger.info("Deleting job ${job.metadata?.name}...")
-        api.batch().v1().jobs().resource(job).delete()
+        api.batch().v1().jobs()
+            .resource(job).delete()
     }
 
     override fun podEvents(): Flux<ResourceEvent<Pod>> {

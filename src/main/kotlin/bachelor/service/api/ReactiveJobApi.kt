@@ -1,6 +1,7 @@
 package bachelor.service.api
 
 import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.service.api.resources.JobReference
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import reactor.core.publisher.Flux
@@ -26,13 +27,14 @@ interface ReactiveJobApi : AutoCloseable {
      * @throws JobAlreadyExistsException if the job with the same spec is
      *     already running
      */
-    fun create(spec: String): Mono<Job>
+    fun create(spec: String): Mono<JobReference>
 
     /**
      * Removes the given job from the kubernetes cluster.
      *
      * @param job the job to delete
      */
+    fun delete(job: JobReference)
     fun delete(job: Job)
 
     /**

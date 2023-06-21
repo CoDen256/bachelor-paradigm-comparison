@@ -1,5 +1,6 @@
 package bachelor.service.api
 
+import bachelor.service.api.resources.JobReference
 import bachelor.service.run.ImageRunRequest
 import bachelor.service.utils.BaseJobTemplateFiller
 import bachelor.service.utils.JobTemplateFileLoader
@@ -65,12 +66,12 @@ class ReactiveFabric8JobApiTest {
             .until { !jobExists(job) }
     }
 
-    private fun podExists(job: Job) = getPods().any { it.second == job.metadata.uid }
+    private fun podExists(job: JobReference) = getPods().any { it.second == job.uid }
 
-    private fun jobExists(job: Job) = getJobs().any { (name, uid) ->
+    private fun jobExists(job: JobReference) = getJobs().any { (name, uid) ->
         name == "test-job" &&
-                name == job.metadata.name &&
-                uid == job.metadata.uid
+                name == job.name &&
+                uid == job.uid
     }
 
     private fun getJobs(): List<Pair<String, String>> {

@@ -22,6 +22,7 @@ import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
 import reactor.test.StepVerifier
 import bachelor.kubernetes.utils.*
+import bachelor.service.api.resources.JobReference
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.ExecutionSnapshot
 import bachelor.service.api.snapshot.Logs
@@ -57,7 +58,7 @@ class KubernetesJobExecutorExecuteTest {
 
     private val spec = "spec"
     private val events: MutableList<Pair<Long, String>> = ArrayList() // events: Time since subscription in millis and description of the event
-    private val originalJob = newJob(TARGET_JOB)
+    private val originalJob = JobReference(TARGET_JOB, TARGET_JOB, "-")
 
     @Mock
     lateinit var api: ReactiveJobApi

@@ -192,7 +192,7 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
         // deserialize job spec, create and run the job in the cluster
         return api.create(request.jobSpec).flatMap { job ->
             // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
-            val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.metadata.uid)
+            val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
                 .transform { logAsTimed(it) }
                 .cache(1)
 
