@@ -15,7 +15,6 @@ import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
