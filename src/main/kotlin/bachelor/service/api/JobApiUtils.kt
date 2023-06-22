@@ -8,9 +8,9 @@ import io.fabric8.kubernetes.api.model.ContainerState as KubernetesContainerStat
 import io.fabric8.kubernetes.api.model.batch.v1.JobCondition as KubernetesJobCondition
 
 /** Creates a snapshot from the [Job] **/
-fun Job.snapshot(lastAction: Action = Action.NOOP) = ActiveJobSnapshot(this, lastAction.toString())
+fun Job.snapshot(lastAction: Action = Action.NOOP) = ActiveJobSnapshot(this)
 /** Creates a snapshot from the [Pod] **/
-fun Pod.snapshot(lastAction: Action = Action.NOOP) = ActivePodSnapshot(this, lastAction.toString())
+fun Pod.snapshot(lastAction: Action = Action.NOOP) = ActivePodSnapshot(this)
 
 fun getJobConditions(job: Job): List<JobCondition> {
     return job.status?.conditions?.map { mapJobCondition(it) } ?: emptyList()

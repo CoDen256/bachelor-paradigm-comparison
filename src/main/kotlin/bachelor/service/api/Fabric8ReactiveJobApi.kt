@@ -4,6 +4,8 @@ import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.reactive.kubernetes.events.ResourceEventHandlerAdapter
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
+import bachelor.service.api.snapshot.ActiveJobSnapshot
+import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.executor.InvalidJobSpecException
 import bachelor.service.executor.JobAlreadyExistsException
 import io.fabric8.kubernetes.api.model.Pod
@@ -16,7 +18,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
-import java.lang.IllegalStateException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -25,21 +26,21 @@ import java.util.concurrent.atomic.AtomicBoolean
  * [KubernetesClient] and providing methods to execute request in a
  * reactive manner.
  *
- * The [ReactiveFabric8JobApi] uses internally to [Sinks.Many] sinks to
+ * The [Fabric8ReactiveJobApi] uses internally to [Sinks.Many] sinks to
  * capture all the events produced by [SharedIndexInformer] both for pods
  * and jobs. The sinks will be later exposed to the client as [Flux]
  * allowing clients to subscribe to all events occurring in the given
  * [namespace]
  */
-class ReactiveFabric8JobApi(
+class Fabric8ReactiveJobApi(
     private val api: KubernetesClient,
     private val namespace: String
 ) : ReactiveJobApi {
 
     private val logger = LogManager.getLogger()
 
-    private val jobEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<Job>>()
-    private val podEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<Pod>>()
+    private val jobEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActiveJobSnapshot>>()
+    private val podEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActivePodSnapshot>>()
     private val cachedJobEvents = jobEventSink.asFlux().cache()
     private val cachedPodEvents = podEventSink.asFlux().cache()
 
@@ -90,26 +91,30 @@ class ReactiveFabric8JobApi(
     }
 
 
-    override fun podEvents(): Flux<ResourceEvent<Pod>> {
+    override fun podEvents(): Flux<ResourceEvent<ActivePodSnapshot>> {
         return cachedPodEvents
     }
 
-    private fun informOnPodEvents(sink: Sinks.Many<ResourceEvent<Pod>>): SharedIndexInformer<Pod> {
+    private fun informOnPodEvents(sink: Sinks.Many<ResourceEvent<ActivePodSnapshot>>): SharedIndexInformer<Pod> {
         return api.pods()
             .inNamespace(namespace)
-            .inform(ResourceEventHandlerAdapter(sink))
+            .inform(ResourceEventHandlerAdapter(sink) {
+                it?.snapshot()
+            })
     }
 
-    override fun jobEvents(): Flux<ResourceEvent<Job>> {
+    override fun jobEvents(): Flux<ResourceEvent<ActiveJobSnapshot>> {
         return cachedJobEvents
     }
 
-    private fun informOnJobEvents(sink: Sinks.Many<ResourceEvent<Job>>): SharedIndexInformer<Job> {
+    private fun informOnJobEvents(sink: Sinks.Many<ResourceEvent<ActiveJobSnapshot>>): SharedIndexInformer<Job> {
         return api.batch()
             .v1()
             .jobs()
             .inNamespace(namespace)
-            .inform(ResourceEventHandlerAdapter(sink))
+            .inform(ResourceEventHandlerAdapter(sink) {
+                it?.snapshot()
+            })
     }
 
     override fun getLogs(pod: PodReference): Mono<String> {

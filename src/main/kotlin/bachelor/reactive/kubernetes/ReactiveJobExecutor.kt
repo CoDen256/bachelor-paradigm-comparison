@@ -1,12 +1,9 @@
 package bachelor.reactive.kubernetes
 
-import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.ReactiveJobApi
 import bachelor.service.api.resources.PodReference
-import bachelor.service.api.snapshot
 import bachelor.service.api.snapshot.*
 import bachelor.service.executor.*
-import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import org.apache.logging.log4j.LogManager
 import org.reactivestreams.Publisher
@@ -187,8 +184,8 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
      * @return the next terminated [ExecutionSnapshot]
      */
     fun executeUntilTerminated(request: JobExecutionRequest): Mono<ExecutionSnapshot> {
-        val jobSnapshotStream = api.jobEvents().flatMap { jobEventToSnapshot(it) }
-        val podSnapshotStream = api.podEvents().flatMap { podEventToSnapshot(it) }
+        val jobSnapshotStream = api.jobEvents().flatMap { it.element.toMono() }
+        val podSnapshotStream = api.podEvents().flatMap { it.element.toMono() }
 
         // deserialize job spec, create and run the job in the cluster
         return api.create(request.jobSpec).flatMap { job ->
@@ -391,22 +388,6 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
 
     private fun <T> podNotRunningError(snapshot: ExecutionSnapshot, timeout: Duration): Mono<T> {
         return PodNotRunningTimeoutException(snapshot, timeout).toMono()
-    }
-
-    /**
-     * Create a snapshot of the job object contained in the event. If the event
-     * has no resource object, return an empty [Mono]
-     */
-    private fun jobEventToSnapshot(jobEvent: ResourceEvent<Job>): Mono<ActiveJobSnapshot> {
-        return jobEvent.element?.snapshot(jobEvent.action).toMono()
-    }
-
-    /**
-     * Create a snapshot of the pod object contained in the event. If the event
-     * has no resource object, return an empty [Mono]
-     */
-    private fun podEventToSnapshot(podEvent: ResourceEvent<Pod>): Mono<ActivePodSnapshot> {
-        return podEvent.element?.snapshot(podEvent.action).toMono()
     }
 
 }

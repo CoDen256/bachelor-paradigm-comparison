@@ -5,7 +5,9 @@ import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot
+import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
+import bachelor.service.api.snapshot.Snapshot
 import bachelor.service.utils.DelayedEmitterBuilder
 import io.fabric8.kubernetes.api.model.*
 import io.fabric8.kubernetes.api.model.ContainerState
@@ -25,25 +27,25 @@ const val TARGET_POD = "target-pod" // fake pod id
 fun Pod.reference() = PodReference(this.metadata.name, this.metadata.namespace ?: "", this.metadata.labels["controller-uid"] ?: "")
 
 // EVENTS
-fun <T : HasMetadata> noop() = ResourceEvent<T>(Action.NOOP, null)
+fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)
 
 fun add(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.ADD, newPod(name, phase, TARGET_JOB, targetState))
+    ResourceEvent(Action.ADD, newPod(name, phase, TARGET_JOB, targetState).snapshot())
 
 fun upd(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.UPDATE, newPod(name, phase, TARGET_JOB, targetState))
+    ResourceEvent(Action.UPDATE, newPod(name, phase, TARGET_JOB, targetState).snapshot())
 
 fun del(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.DELETE, newPod(name, phase, TARGET_JOB, targetState))
+    ResourceEvent(Action.DELETE, newPod(name, phase, TARGET_JOB, targetState).snapshot())
 
 fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions))
+    ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions).snapshot())
 
 fun upd(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.UPDATE, newJob(name, active, ready, failed, succeeded, conditions))
+    ResourceEvent(Action.UPDATE, newJob(name, active, ready, failed, succeeded, conditions).snapshot())
 
 fun del(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.DELETE, newJob(name, active, ready, failed, succeeded, conditions))
+    ResourceEvent(Action.DELETE, newJob(name, active, ready, failed, succeeded, conditions).snapshot())
 
 
 
@@ -219,7 +221,7 @@ fun millis(millis: Long): Duration = Duration.ofMillis(millis)
  *  * Phase - (P)ending/(R)unning/((S)ucceeded|(F)ailed)
  *  * MainContainerState - (U)nknown/(W)aiting/(R)unning/(T)erminated(exitcode)
  */
-private fun <T: HasMetadata> parseEvent(event: String, element: T): ResourceEvent<T> {
+private fun <T: Snapshot> parseEvent(event: String, element: T): ResourceEvent<T> {
     val type = event[0]
     return ResourceEvent(
         when(type){
@@ -234,18 +236,18 @@ private fun <T: HasMetadata> parseEvent(event: String, element: T): ResourceEven
 /**
  * Parse job of format {ACTIVE}{READY}{FAILED}{SUCCESS}
  */
-private fun parseJob(snapshot: String): Job {
+private fun parseJob(snapshot: String): ActiveJobSnapshot {
     val active = parseIntOrNull(snapshot[0])
     val ready = parseIntOrNull(snapshot[1])
     val failed = parseIntOrNull(snapshot[2])
     val successful = parseIntOrNull(snapshot[3])
-    return newJob(TARGET_JOB, active, ready, failed, successful)
+    return newJob(TARGET_JOB, active, ready, failed, successful).snapshot()
 }
 
 /**
  * Parse pod of Format {PHASE}/{CONTAINER_STATE}[{EXIT_CODE}]
  */
-private fun parsePod(snapshot: String): Pod {
+private fun parsePod(snapshot: String): ActivePodSnapshot {
     val split = snapshot.split("/")
     val phase = when(val phaseString = split[0]){
         "P" -> "Pending"
@@ -262,7 +264,7 @@ private fun parsePod(snapshot: String): Pod {
         'T' -> containerStateTerminated(Integer.parseInt(containerStateString.substring(1)))
         else -> throw IllegalArgumentException("Unknown Container State for $containerStateString")
     }
-    return newPod(TARGET_POD, phase, TARGET_JOB, containerState)
+    return newPod(TARGET_POD, phase, TARGET_JOB, containerState).snapshot()
 }
 
 private fun parseIntOrNull(property: Char): Int?{
@@ -273,7 +275,7 @@ private fun parseIntOrNull(property: Char): Int?{
 /**
  * Parse events of format {EVENT}({ELEMENT})|{EVENT}({ELEMENT})|{EVENT}({ELEMENT})
  */
-private fun <T: HasMetadata> parseEvents(timeline: String, elementParser: (String) -> T): List<ResourceEvent<T>>{
+private fun <T: Snapshot> parseEvents(timeline: String, elementParser: (String) -> T): List<ResourceEvent<T>>{
     val events = timeline
         .trim('|')
         .split("|")

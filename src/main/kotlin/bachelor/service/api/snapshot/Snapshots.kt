@@ -31,7 +31,7 @@ object InitialJobSnapshot : JobSnapshot {
  * - status: a set of numerical properties, describing the state of a job
  *   (amount of active/running/failed/successful pods)
  */
-data class ActiveJobSnapshot(val job: Job, val lastAction: String) : JobSnapshot {
+data class ActiveJobSnapshot(val job: Job, val lastAction: String="NOOP") : JobSnapshot {
     val name: String = job.metadata?.name ?: "[Job name not available]"
     val conditions: List<JobCondition> = getJobConditions(job)
     val trueConditions: List<JobCondition> get() = conditions.filter { it.status.lowercase() == "true" }
@@ -46,15 +46,13 @@ data class ActiveJobSnapshot(val job: Job, val lastAction: String) : JobSnapshot
         if (this === other) return true
         if (other !is ActiveJobSnapshot) return false
 
-        if (lastAction != other.lastAction) return false
         if (name != other.name) return false
         if (conditions != other.conditions) return false
         return status == other.status
     }
 
     override fun hashCode(): Int {
-        var result = lastAction.hashCode()
-        result = 31 * result + name.hashCode()
+        var result = name.hashCode()
         result = 31 * result + conditions.hashCode()
         result = 31 * result + status.hashCode()
         return result
@@ -115,7 +113,7 @@ object InitialPodSnapshot : PodSnapshot {
  * contains information about its status and states, like phase
  * or state of the main container at a particular point in time.
  */
-data class ActivePodSnapshot(val pod: Pod, val lastAction: String) : PodSnapshot {
+data class ActivePodSnapshot(val pod: Pod, val lastAction: String="NOOP") : PodSnapshot {
     val name: String = pod.metadata?.name ?: "[Pod name unavailable]"
     val mainContainerState: ContainerState = getMainContainerState(pod)
     val phase: String = getPhase(pod)
@@ -129,15 +127,13 @@ data class ActivePodSnapshot(val pod: Pod, val lastAction: String) : PodSnapshot
         if (this === other) return true
         if (other !is ActivePodSnapshot) return false
 
-        if (lastAction != other.lastAction) return false
         if (name != other.name) return false
         if (mainContainerState != other.mainContainerState) return false
         return phase == other.phase
     }
 
     override fun hashCode(): Int {
-        var result = lastAction.hashCode()
-        result = 31 * result + name.hashCode()
+        var result = name.hashCode()
         result = 31 * result + mainContainerState.hashCode()
         result = 31 * result + phase.hashCode()
         return result

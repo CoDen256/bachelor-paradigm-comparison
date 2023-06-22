@@ -7,7 +7,6 @@ import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.snapshot
 import bachelor.service.executor.*
 import io.fabric8.kubernetes.api.model.*
-import io.fabric8.kubernetes.api.model.batch.v1.Job
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -23,10 +22,7 @@ import reactor.kotlin.core.publisher.toMono
 import reactor.test.StepVerifier
 import bachelor.kubernetes.utils.*
 import bachelor.service.api.resources.JobReference
-import bachelor.service.api.snapshot.ActivePodSnapshot
-import bachelor.service.api.snapshot.ExecutionSnapshot
-import bachelor.service.api.snapshot.Logs
-import bachelor.service.api.snapshot.TerminatedState
+import bachelor.service.api.snapshot.*
 import java.time.Duration
 
 /**
@@ -68,7 +64,7 @@ class KubernetesJobExecutorExecuteTest {
             .executeUntilTerminated(JobExecutionRequest(spec, isRunningTimeout, isTerminatedTimeout))
     }
 
-    private fun setupApi(jobStream: Flux<ResourceEvent<Job>>, podStream: Flux<ResourceEvent<Pod>>) {
+    private fun setupApi(jobStream: Flux<ResourceEvent<ActiveJobSnapshot>>, podStream: Flux<ResourceEvent<ActivePodSnapshot>>) {
         // actual subscription to the stream happens a bit later, so events are shifted in time for the Executor than the time presented in the timelines
         // some of the events will already be emitted before the subscription
         whenever(api.create(spec)).thenReturn(originalJob.toMono())
@@ -113,9 +109,9 @@ class KubernetesJobExecutorExecuteTest {
     @Test
     fun executeAndEmitErrorInStream() {
         // SETUP
-        val jobSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<Job>>()
+        val jobSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActiveJobSnapshot>>()
         val jobStream = jobSink.asFlux()
-        val podStream = Flux.empty<ResourceEvent<Pod>>()
+        val podStream = Flux.empty<ResourceEvent<ActivePodSnapshot>>()
 
         setupApi(jobStream, podStream)
         jobSink.tryEmitError(IllegalStateException())
@@ -395,20 +391,20 @@ class KubernetesJobExecutorExecuteTest {
 
     private fun emitEventsAndLog(delayJob: Long, delayPod: Long,
                                  interval: Long,
-                                 timelineJob: String, timelinePod: String): Pair<Flux<ResourceEvent<Job>>, Flux<ResourceEvent<Pod>>> {
+                                 timelineJob: String, timelinePod: String): Pair<Flux<ResourceEvent<ActiveJobSnapshot>>, Flux<ResourceEvent<ActivePodSnapshot>>> {
         return emitJobEvents(delayJob, interval, timelineJob) to
                 emitPodEvents(delayPod, interval, timelinePod)
     }
 
-    private fun emitPodEvents(delay: Long, interval: Long, timeline: String): Flux<ResourceEvent<Pod>> {
+    private fun emitPodEvents(delay: Long, interval: Long, timeline: String): Flux<ResourceEvent<ActivePodSnapshot>> {
         return emitWithInterval(delay, interval, *parsePodEvents(timeline).toTypedArray())
     }
 
-    private fun emitJobEvents(delay: Long, interval: Long, timeline: String): Flux<ResourceEvent<Job>> {
+    private fun emitJobEvents(delay: Long, interval: Long, timeline: String): Flux<ResourceEvent<ActiveJobSnapshot>> {
         return emitWithInterval(delay, interval, *parseJobEvents(timeline).toTypedArray())
     }
 
-    private fun <T : HasMetadata> emitWithInterval(delay: Long, interval: Long, vararg eventsToEmit: ResourceEvent<T>): Flux<ResourceEvent<T>> {
+    private fun <T : Snapshot> emitWithInterval(delay: Long, interval: Long, vararg eventsToEmit: ResourceEvent<T>): Flux<ResourceEvent<T>> {
         return Flux.interval(millis(delay), millis(interval))
             .map {eventsToEmit[it.toInt()] }
             .timed()

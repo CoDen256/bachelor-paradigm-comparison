@@ -3,8 +3,8 @@ package bachelor.service.api
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
-import io.fabric8.kubernetes.api.model.Pod
-import io.fabric8.kubernetes.api.model.batch.v1.Job
+import bachelor.service.api.snapshot.ActiveJobSnapshot
+import bachelor.service.api.snapshot.ActivePodSnapshot
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -55,7 +55,7 @@ interface ReactiveJobApi : AutoCloseable {
      *
      * @return a [Flux] publisher, which streams all the [Pod] events
      */
-    fun podEvents(): Flux<ResourceEvent<Pod>>
+    fun podEvents(): Flux<ResourceEvent<ActivePodSnapshot>>
 
     /**
      * Provides a [ResourceEvent] publisher, which internally via listeners
@@ -70,7 +70,7 @@ interface ReactiveJobApi : AutoCloseable {
      *
      * @return a [Flux] publisher, which streams all the [Job] events
      */
-    fun jobEvents(): Flux<ResourceEvent<Job>>
+    fun jobEvents(): Flux<ResourceEvent<ActiveJobSnapshot>>
 
     /**
      * Makes a request for the given pod to obtain the logs it has produced.

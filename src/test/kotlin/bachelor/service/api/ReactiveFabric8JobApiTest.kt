@@ -5,11 +5,13 @@ import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
+import bachelor.service.api.snapshot.ActiveJobSnapshot
+import bachelor.service.api.snapshot.ActivePodSnapshot
+import bachelor.service.api.snapshot.RunningState
+import bachelor.service.api.snapshot.WaitingState
 import bachelor.service.utils.BaseJobTemplateFiller
 import bachelor.service.utils.JobTemplateFileLoader
 import com.google.common.truth.Truth.assertThat
-import io.fabric8.kubernetes.api.model.Pod
-import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
@@ -47,7 +49,7 @@ class ReactiveFabric8JobApiTest {
 
     @BeforeEach
     fun setup(){
-        api = ReactiveFabric8JobApi(client, namespace)
+        api = Fabric8ReactiveJobApi(client, namespace)
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.startListeners()
     }
@@ -118,7 +120,7 @@ class ReactiveFabric8JobApiTest {
             )
         )
         val podEvents = getPodEvents()
-        val name = podEvents[0].element!!.metadata.name
+        val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = name),
@@ -146,7 +148,7 @@ class ReactiveFabric8JobApiTest {
             )
         )
         val podEvents = getPodEvents()
-        val name = podEvents[0].element!!.metadata.name
+        val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = name),
@@ -491,18 +493,26 @@ class ReactiveFabric8JobApiTest {
         )
     }
 
-    private fun getPodEvents(): MutableList<ResourceEvent<Pod>> =
+    private fun getPodEvents(): MutableList<ResourceEvent<ActivePodSnapshot>> =
         api.podEvents().collectList().block()!!.onEach { println(it) }
 
-    private fun getJobEvents(): List<ResourceEvent<Job>> =
+    private fun getJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
         api.jobEvents().collectList().block()!!.onEach { println(it) }
 
-    private fun ResourceEvent<Pod>.getWaitingMessage(): String {
-        return element?.status?.containerStatuses?.get(0)?.state?.waiting?.message ?: ""
+    private fun ResourceEvent<ActivePodSnapshot>.getWaitingMessage(): String {
+        val state = element?.mainContainerState
+        if (state is WaitingState){
+            return state.message
+        }
+        return ""
     }
 
-    private fun ResourceEvent<Pod>.getRunningStartedAt(): String {
-        return element?.status?.containerStatuses?.get(0)?.state?.running?.startedAt ?: ""
+    private fun ResourceEvent<ActivePodSnapshot>.getRunningStartedAt(): String {
+        val state = element?.mainContainerState
+        if (state is RunningState){
+            return state.startedAt
+        }
+        return ""
     }
 
     private fun awaitUntilJobDoesNotExist(job: JobReference, timeout: Duration = Duration.ofSeconds(JOB_DONE_TIMEOUT)) {

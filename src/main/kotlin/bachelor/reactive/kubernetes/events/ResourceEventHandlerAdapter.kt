@@ -1,5 +1,6 @@
 package bachelor.reactive.kubernetes.events
 
+import bachelor.service.api.snapshot.Snapshot
 import io.fabric8.kubernetes.api.model.HasMetadata
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler
 import reactor.core.publisher.Sinks
@@ -18,19 +19,22 @@ import reactor.core.publisher.Sinks
  * [ResourceEvent] publisher (e.g. [Sinks.Many.asFlux]), allowing to
  * subscribe to the events captured by this [ResourceEventHandler]
  */
-class ResourceEventHandlerAdapter<T : HasMetadata>(private val sink: Sinks.Many<ResourceEvent<T>>) :
-    ResourceEventHandler<T> {
+class ResourceEventHandlerAdapter<O : HasMetadata, S : Snapshot>(
+    private val sink: Sinks.Many<ResourceEvent<S>>,
+    private val mapping: (O?) -> S?
+) :
+    ResourceEventHandler<O> {
 
-    override fun onAdd(obj: T?) {
-        sink.tryEmitNext(ResourceEvent(Action.ADD, obj))
+    override fun onAdd(obj: O?) {
+        sink.tryEmitNext(ResourceEvent(Action.ADD, mapping(obj)))
     }
 
-    override fun onUpdate(oldObj: T?, newObj: T?) {
-        sink.tryEmitNext(ResourceEvent(Action.UPDATE, newObj))
+    override fun onUpdate(oldObj: O?, newObj: O?) {
+        sink.tryEmitNext(ResourceEvent(Action.UPDATE, mapping(newObj)))
     }
 
-    override fun onDelete(obj: T?, deletedFinalStateUnknown: Boolean) {
-        sink.tryEmitNext(ResourceEvent(Action.DELETE, obj))
+    override fun onDelete(obj: O?, deletedFinalStateUnknown: Boolean) {
+        sink.tryEmitNext(ResourceEvent(Action.DELETE, mapping(obj)))
     }
 }
 
