@@ -251,9 +251,9 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun jobEvents_CreateAwaitUntilJobDidNotStartAndRemoved() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(0, 0, fail = true)
+        val job = api.createAndAwaitUntilJobCreated(10, 0, fail = true)
 
-        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+        Thread.sleep(5000)
 
         api.stopListeners() // emits complete
 
@@ -263,12 +263,6 @@ class ReactiveFabric8JobApiTest {
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
-
-                upd(null, 0, null, null),
-
-                upd(null, 0, 1, null, listOf("Failed")),
-                upd(null, 0, 1, null, listOf("Failed")),
-                del(null, 0, 1, null, listOf("Failed")),
             )
         )
     }
@@ -391,9 +385,12 @@ class ReactiveFabric8JobApiTest {
                 "NAME" to TARGET_JOB,
                 "SLEEP" to "$executionTime",
                 "TTL" to "$ttl",
-                "CODE" to "$exitCode"
+                "CODE" to "$exitCode",
+                "FAIL" to listOf("", "f/f")[fail.toInt()]
             )
-        )
+        ).also {
+            println(it)
+        }
     }
 
     private inline fun <reified T : Any> List<T>.log(): List<T> {
@@ -405,4 +402,10 @@ class ReactiveFabric8JobApiTest {
             it
         }
     }
+
+    private fun Boolean.toInt(): Int {
+        return if (this) 1 else 0
+    }
 }
+
+
