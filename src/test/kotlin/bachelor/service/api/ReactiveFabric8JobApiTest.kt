@@ -32,11 +32,12 @@ class ReactiveFabric8JobApiTest {
     private val namespace = "client-test"
     private val JOB_CREATED_TIMEOUT = 5L
     private val JOB_DELETED_TIMEOUT = 5L
-    private val JOB_DONE_TIMEOUT = 15L
+    private val JOB_DONE_TIMEOUT = 20L
 
     private val POD_CREATED_TIMEOUT = 5L
     private val POD_READY_TIMEOUT = 5L
     private val POD_TERMINATED_TIMEOUT = 10L
+    private val POD_DELETED_TIMEOUT = 15L
 
 
     private lateinit var api: ReactiveJobApi
@@ -51,6 +52,7 @@ class ReactiveFabric8JobApiTest {
     @AfterEach
     fun teardown(){
         api.deleteAllJobsAndAwaitNoJobsPresent()
+        api.awaitNoMoreThanOnePodIsPresent()
         api.close()
         api.jobEvents().collectList().block()?.forEach { println(it) }
     }
@@ -62,7 +64,7 @@ class ReactiveFabric8JobApiTest {
         awaitUntilPodCreated(job)
 
         // wait until is done and verify no job available after ttl = 0 s + execution time = 1 s
-        awaitUntilJobIsDone(job)
+        awaitUntilJobDoesNotExist(job)
     }
 
 
@@ -200,7 +202,7 @@ class ReactiveFabric8JobApiTest {
         // execute
         val job = api.createAndAwaitUntilJobCreated(0, 0)
 
-        awaitUntilJobIsDone(job) // wait until job is done and deleted
+        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
 
         api.stopListeners() // emits complete
 
@@ -220,17 +222,66 @@ class ReactiveFabric8JobApiTest {
         )
     }
 
+    @Test
+    fun jobEvents_CreateAwaitUntilJobFailedAndRemoved() {
+        // execute
+        val job = api.createAndAwaitUntilJobCreated(0, 0, -1)
+
+        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+
+        api.stopListeners() // emits complete
+
+        // verify
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
+        assertThat(events).containsExactlyElementsIn(
+            listOf(
+                add(null, null, null, null),
+                upd(1, 0, null, null),
+
+                upd(null, 0, null, null),
+
+                upd(null, 0, 1, null, listOf("Failed")),
+                upd(null, 0, 1, null, listOf("Failed")),
+                del(null, 0, 1, null, listOf("Failed")),
+            )
+        )
+    }
 
 
-    private fun awaitUntilJobIsDone(job: JobReference, timeout: Duration = Duration.ofSeconds(JOB_DONE_TIMEOUT)) {
+    @Test
+    fun jobEvents_CreateAwaitUntilJobDidNotStartAndRemoved() {
+        // execute
+        val job = api.createAndAwaitUntilJobCreated(0, 0, fail = true)
+
+        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+
+        api.stopListeners() // emits complete
+
+        // verify
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
+        assertThat(events).containsExactlyElementsIn(
+            listOf(
+                add(null, null, null, null),
+                upd(1, 0, null, null),
+
+                upd(null, 0, null, null),
+
+                upd(null, 0, 1, null, listOf("Failed")),
+                upd(null, 0, 1, null, listOf("Failed")),
+                del(null, 0, 1, null, listOf("Failed")),
+            )
+        )
+    }
+
+    private fun awaitUntilJobDoesNotExist(job: JobReference, timeout: Duration = Duration.ofSeconds(JOB_DONE_TIMEOUT)) {
         Awaitility.await()
             .atMost(timeout)
             .until { !jobExists(job) }
     }
 
 
-    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long): JobReference {
-        val job = create(resolveSpec(executionTime, ttl)).block()!!
+    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): JobReference {
+        val job = create(resolveSpec(executionTime, ttl, exitCode, fail)).block()!!
         Awaitility.await()
             .atMost(Duration.ofSeconds(JOB_CREATED_TIMEOUT))
             .until { jobExists(job) }
@@ -287,6 +338,12 @@ class ReactiveFabric8JobApiTest {
         }
     }
 
+    private fun ReactiveJobApi.awaitNoMoreThanOnePodIsPresent(){
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(POD_DELETED_TIMEOUT))
+            .until { getPods().size <= 1 }
+    }
+
 
     private fun jobExists(job: JobReference, active: Int?, ready: Int?, failed: Int?, succeeded: Int?) = getJobs().any {
         getJobs().any { (name, uid) ->
@@ -328,12 +385,13 @@ class ReactiveFabric8JobApiTest {
             .map { it.reference() }
     }
 
-    private fun resolveSpec(executionTime: Long, ttl: Long): String {
+    private fun resolveSpec(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): String {
         return resolver.fill(
             jobSpecProvider.getTemplate(), mapOf(
                 "NAME" to TARGET_JOB,
                 "SLEEP" to "$executionTime",
-                "TTL" to "$ttl"
+                "TTL" to "$ttl",
+                "CODE" to "$exitCode"
             )
         )
     }

@@ -12,5 +12,11 @@ spec:
         - name: main
           image: busybox:latest
           command: [ "/bin/sh" ]
-          args: [ "-c", "echo start && sleep ${SLEEP} && echo slept ${SLEEP} && echo end" ]
+          args: [ "-c", "echo start && sleep ${SLEEP} && echo slept ${SLEEP} && echo end && exit ${CODE}" ]
+          volumeMounts:
+            - mountPath: /vol
+              name: dir
       restartPolicy: Never
+      volumes:
+        - name: dir
+          emptyDir: {}
