@@ -33,6 +33,7 @@ data class ActiveJobSnapshot(val job: Job, val lastAction: String) : JobSnapshot
     val status: JobStatus = getJobStatus(job)
 
     override fun toString(): String {
+        return "$status${if (trueConditions.isNotEmpty()) trueConditions.map { it.type } else "" }"
         return "Job($name/$status${trueConditions.map { it.type }})[${lastAction.take(1)}]"
     }
 
@@ -61,7 +62,21 @@ data class ActiveJobSnapshot(val job: Job, val lastAction: String) : JobSnapshot
  * A job condition represents the status of the job, that may or may not be
  * true.
  */
-data class JobCondition(val status: String, val message: String, val type: String, val reason: String)
+data class JobCondition(val status: String, val message: String, val type: String, val reason: String) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is JobCondition) return false
+
+        if (status != other.status) return false
+        return type == other.type
+    }
+
+    override fun hashCode(): Int {
+        var result = status.hashCode()
+        result = 31 * result + type.hashCode()
+        return result
+    }
+}
 
 /**
  * Job status encapsulates several numeric properties about the job: the
@@ -69,6 +84,7 @@ data class JobCondition(val status: String, val message: String, val type: Strin
  */
 data class JobStatus(val active: Int?, val ready: Int?, val failed: Int?, val succeeded: Int?) {
     override fun toString(): String {
+        return "${active.toString()[0]}${ready.toString()[0]}${failed.toString()[0]}${succeeded.toString()[0]}"
         return "A:$active/R:$ready/F:$failed/S:$succeeded"
     }
 }

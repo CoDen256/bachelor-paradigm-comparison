@@ -16,7 +16,9 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
+import java.lang.IllegalStateException
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Basic [ReactiveJobApi] implementation acting as a wrapper around the
@@ -41,12 +43,17 @@ class ReactiveFabric8JobApi(
     private val cachedJobEvents = jobEventSink.asFlux().cache()
     private val cachedPodEvents = podEventSink.asFlux().cache()
 
+    private var informersStarted = AtomicBoolean()
     private var jobInformer: SharedIndexInformer<Job>? = null
     private var podInformer: SharedIndexInformer<Pod>? = null
 
     override fun startListeners() {
-        jobInformer = informOnJobEvents(jobEventSink)
-        podInformer = informOnPodEvents(podEventSink)
+        if (informersStarted.compareAndSet(false, true)){
+            jobInformer = informOnJobEvents(jobEventSink)
+            podInformer = informOnPodEvents(podEventSink)
+        }else{
+            error("Listeners are already started!")
+        }
     }
 
     override fun create(spec: String): Mono<JobReference> {
@@ -56,6 +63,10 @@ class ReactiveFabric8JobApi(
                 .create()
                 .toMono()
                 .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
+                .map {
+                    logger.info("Created {}", it)
+                    it
+                }
         } catch (e: IllegalArgumentException) {
             return InvalidJobSpecException("Unable to parse job spec: ${e.message}", e).toMono()
         } catch (e: KubernetesClientException) {

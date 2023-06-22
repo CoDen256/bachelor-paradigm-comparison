@@ -11,6 +11,7 @@ import io.fabric8.kubernetes.api.model.*
 import io.fabric8.kubernetes.api.model.ContainerState
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
+import io.fabric8.kubernetes.api.model.batch.v1.JobCondition
 import io.fabric8.kubernetes.api.model.batch.v1.JobStatusBuilder
 import org.junit.jupiter.api.Assertions
 import reactor.core.publisher.Flux
@@ -35,14 +36,14 @@ fun upd(phase: String, targetState: KubernetesResource? = null) =
 fun del(phase: String, targetState: KubernetesResource? = null) =
     ResourceEvent(Action.DELETE, newPod(TARGET_POD, phase, TARGET_JOB, targetState))
 
-fun add(active: Int?, ready: Int?, succeeded: Int?, failed: Int?, name: String = TARGET_JOB) =
-    ResourceEvent(Action.ADD, newJob(name, active, ready, succeeded, failed))
+fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
+    ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions))
 
-fun upd(active: Int?, ready: Int?, succeeded: Int?, failed: Int?, name: String = TARGET_JOB) =
-    ResourceEvent(Action.UPDATE, newJob(name, active, ready, succeeded, failed))
+fun upd(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
+    ResourceEvent(Action.UPDATE, newJob(name, active, ready, failed, succeeded, conditions))
 
-fun del(active: Int?, ready: Int?, succeeded: Int?, failed: Int?, name: String = TARGET_JOB) =
-    ResourceEvent(Action.DELETE, newJob(name, active, ready, succeeded, failed))
+fun del(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
+    ResourceEvent(Action.DELETE, newJob(name, active, ready, failed, succeeded, conditions))
 
 
 
@@ -158,7 +159,9 @@ fun newPod(name: String, phase: String, job: String, state: KubernetesResource? 
         .build()
 }
 
-fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null): Job {
+fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null,
+           conditions: List<String> = listOf()
+): Job {
     val meta = ObjectMetaBuilder()
         .withUid(name)
         .withName(name)
@@ -168,7 +171,7 @@ fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? =
         .withReady(ready)
         .withSucceeded(succeeded)
         .withFailed(failed)
-        .withConditions(listOf())
+        .withConditions(conditions.map { JobCondition("", "", "", "", "True", it) })
         .build()
     return JobBuilder()
         .withMetadata(meta)

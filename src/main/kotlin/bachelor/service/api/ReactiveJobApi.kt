@@ -9,12 +9,17 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
- * [ReactiveJobApi] is a simplified Kubernetes API client for managing Kubernetes
- * Jobs and observing events
+ * [ReactiveJobApi] is a simplified Kubernetes API client for managing
+ * Kubernetes Jobs and observing events
  */
 interface ReactiveJobApi : AutoCloseable {
 
-    /** Starts the client and listening for the events */
+    /**
+     * Starts the client and listening for the events. MUST be called only
+     * once!
+     *
+     * @throws IllegalStateException if called more than once
+     */
     fun startListeners()
 
     /**
@@ -39,14 +44,14 @@ interface ReactiveJobApi : AutoCloseable {
 
     /**
      * Provides a [ResourceEvent] publisher, which internally via listeners
-     * captures the events occurring in a particular namespace related
-     * to all [Pod] resources in that namespace and publishes them as a
-     * stream. Each event encapsulates an operation and a [Pod] instance
-     * (snapshot of the pod at a given point of time), on which the operation
-     * was performed. Thus, it is possible to observe any possible [Pod]
-     * event occurring in a particular namespace. The underlying event
-     * stream should be cached, so even if the subscribers subscribe
-     * after relevant events are emitted, the events will still get processed
+     * captures the events occurring in a particular namespace related to all
+     * [Pod] resources in that namespace and publishes them as a stream. Each
+     * event encapsulates an operation and a [Pod] instance (snapshot of the
+     * pod at a given point of time), on which the operation was performed.
+     * Thus, it is possible to observe any possible [Pod] event occurring in a
+     * particular namespace. The underlying event stream should be cached, so
+     * even if the subscribers subscribe after relevant events are emitted, the
+     * events will still get processed
      *
      * @return a [Flux] publisher, which streams all the [Pod] events
      */
@@ -60,8 +65,8 @@ interface ReactiveJobApi : AutoCloseable {
      * job at a given point of time), on which the operation was performed.
      * Thus, it is possible to observe any possible [Job] event occurring in
      * particular namespace. The underlying event stream should be cached, so
-     * even if the subscribers subscribe after relevant events are emitted,
-     * the events will still get processed
+     * even if the subscribers subscribe after relevant events are emitted, the
+     * events will still get processed
      *
      * @return a [Flux] publisher, which streams all the [Job] events
      */
@@ -75,5 +80,9 @@ interface ReactiveJobApi : AutoCloseable {
      */
     fun getLogs(pod: PodReference): Mono<String>
 
+    /**
+     * Stop the inner informers, that listen to the events regarding pods and
+     * jobs on the namespace
+     */
     fun stopListeners()
 }

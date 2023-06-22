@@ -15,8 +15,12 @@ import io.fabric8.kubernetes.api.model.batch.v1.Job
 data class ResourceEvent<T : HasMetadata>(val action: Action, val element: T?) {
 
     override fun toString(): String {
-        val element = element?.let { "${it::class.simpleName}/${it.metadata.name}" } ?: "<N/A>"
-        return "$action($element)"
+        if (element is Pod){
+            return element.snapshot(action).toString()
+        }else if (element is Job){
+            return element.snapshot(action).toString()
+        }
+        return "$action(${element?.javaClass?.simpleName})"
     }
 
     override fun equals(other: Any?): Boolean {

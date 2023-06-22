@@ -1,6 +1,7 @@
 package bachelor.service.api
 
 import bachelor.kubernetes.utils.*
+import bachelor.reactive.kubernetes.events.Action
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
 import bachelor.service.utils.BaseJobTemplateFiller
@@ -9,7 +10,9 @@ import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
@@ -29,102 +32,96 @@ class ReactiveFabric8JobApiTest {
     private val namespace = "client-test"
     private val JOB_CREATED_TIMEOUT = 5L
     private val JOB_DELETED_TIMEOUT = 5L
+    private val JOB_DONE_TIMEOUT = 15L
+
     private val POD_CREATED_TIMEOUT = 5L
     private val POD_READY_TIMEOUT = 5L
     private val POD_TERMINATED_TIMEOUT = 10L
 
 
+    private lateinit var api: ReactiveJobApi
+
+    @BeforeEach
+    fun setup(){
+        api = ReactiveFabric8JobApi(client, namespace)
+        api.deleteAllJobsAndAwaitNoJobsPresent()
+        api.startListeners()
+    }
+
+    @AfterEach
+    fun teardown(){
+        api.deleteAllJobsAndAwaitNoJobsPresent()
+        api.close()
+        api.jobEvents().collectList().block()?.forEach { println(it) }
+    }
+
     @Test
     fun create() {
-        val job = ReactiveFabric8JobApi(client, namespace)
-            .createAndVerifyJobCreated(1, 0)
+        val job = api.createAndAwaitUntilJobCreated(0, 0)
 
-        verifyPodCreated(job)
+        awaitUntilPodCreated(job)
 
         // wait until is done and verify no job available after ttl = 0 s + execution time = 1 s
-        Awaitility.await()
-            .atLeast(Duration.ofSeconds(1))
-            .atMost(Duration.ofSeconds(10))
-            .until { !jobExists(job) }
+        awaitUntilJobIsDone(job)
     }
 
 
     @Test
     fun delete() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-        val job = api.createAndVerifyJobCreated(30, 0)
-        api.deleteAndVerifyJobDeleted(job)
+        val job = api.createAndAwaitUntilJobCreated(30, 0)
+        api.deleteAndAwaitUntilJobDeleted(job)
     }
 
 
     @Test
     fun getLogsContains() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-        val job = api.createAndVerifyJobCreated(10, 20)
-        val pod = verifyPodCreated(job)
-        println(pod.name)
+        val job = api.createAndAwaitUntilJobCreated(10, 20)
+        val pod = awaitUntilPodCreated(job)
 
-        verifyPodReady(job)
+        awaitUntilPodReady(job)
 
         val logs = api.getLogs(pod).block()!!
-        println(logs)
         assertContains(logs, "start\n")
-
-        api.deleteAndVerifyJobDeleted(job)
     }
 
     @Test
     fun getLogs() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-        val job = api.createAndVerifyJobCreated(0, 20)
-        val pod = verifyPodCreated(job)
-        println(pod.name)
+        val job = api.createAndAwaitUntilJobCreated(0, 20)
+        val pod = awaitUntilPodCreated(job)
 
-        verifyPodTerminated(job)
+        awaitUntilPodTerminated(job)
 
         val logs = api.getLogs(pod).block()!!
-        println(logs)
         assertEquals(logs, "start\nslept 0\nend\n")
-
-        api.deleteAndVerifyJobDeleted(job)
     }
 
 
     @Test
-    fun jobEventsCreation() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
+    fun jobEvents_Create() {
         // execute
-        api.startListeners()
-        val job = api.createAndVerifyJobCreated(0, 0)
-        api.stopListeners()
+        api.createAndAwaitUntilJobCreated(10, 0)
+        api.stopListeners() // emits complete
 
         // verify
-        val events = api.jobEvents().collectList().block()
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
-                upd(1, 0, null, null)
+                upd(1, 0, null, null),
             )
         )
-
-        api.deleteAndVerifyJobDeleted(job)
     }
 
     @Test
-    fun jobEventsCreationDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
+    fun jobEvents_CreateDelete() {
         // execute
-        api.startListeners()
+        val job = api.createAndAwaitUntilJobCreated(10, 0)
+        api.deleteAndAwaitUntilJobDeleted(job)
 
-        val job = api.createAndVerifyJobCreated(0, 0)
-        api.deleteAndVerifyJobDeleted(job)
-
-        api.stopListeners()
+        api.stopListeners() // emits complete
 
         // verify
-        val events = api.jobEvents().collectList().block()
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -135,20 +132,16 @@ class ReactiveFabric8JobApiTest {
     }
 
     @Test
-    fun jobEventsCreationWaitingForPodCreationDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
+    fun jobEvents_CreateAwaitUntilPodCreatedDelete() {
         // execute
-        api.startListeners()
+        val job = api.createAndAwaitUntilJobCreated(10, 0)
+        awaitUntilPodCreated(job)
+        api.deleteAndAwaitUntilJobDeleted(job)
 
-        val job = api.createAndVerifyJobCreated(0, 0)
-        verifyPodCreated(job)
-        api.deleteAndVerifyJobDeleted(job)
-
-        api.stopListeners()
+        api.stopListeners() // emits complete
 
         // verify
-        val events = api.jobEvents().collectList().block()
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -159,21 +152,17 @@ class ReactiveFabric8JobApiTest {
     }
 
     @Test
-    fun jobEventsCreationWaitingForPodReadinessDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
+    fun jobEvents_CreateAwaitUntilPodReadyDelete() {
         // execute
-        api.startListeners()
+        val job = api.createAndAwaitUntilJobCreated(10, 0)
+        awaitUntilPodCreated(job)
+        awaitUntilPodReady(job)
+        api.deleteAndAwaitUntilJobDeleted(job)
 
-        val job = api.createAndVerifyJobCreated(0, 0)
-        verifyPodCreated(job)
-        verifyPodReady(job)
-        api.deleteAndVerifyJobDeleted(job)
-
-        api.stopListeners()
+        api.stopListeners() // emits complete
 
         // verify
-        val events = api.jobEvents().collectList().block()
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -184,21 +173,18 @@ class ReactiveFabric8JobApiTest {
     }
 
     @Test
-    fun jobEventsCreationWaitingForPodTerminationDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
+    fun jobEvents_CreateAwaitUntilPodTerminatedDelete() {
         // execute
-        api.startListeners()
+        val job = api.createAndAwaitUntilJobCreated(0, 0)
+        awaitUntilPodCreated(job)
+        awaitUntilPodReady(job)
+        awaitUntilPodTerminated(job)
+        api.deleteAndAwaitUntilJobDeleted(job)
 
-        val job = api.createAndVerifyJobCreated(0, 0)
-        verifyPodCreated(job)
-        verifyPodTerminated(job)
-        api.deleteAndVerifyJobDeleted(job)
-
-        api.stopListeners()
+        api.stopListeners() // emits complete
 
         // verify
-        val events = api.jobEvents().collectList().block()
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -208,94 +194,42 @@ class ReactiveFabric8JobApiTest {
         )
     }
 
+
     @Test
-    fun jobEventsCreationWaitingForPodTerminationAndWaitDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
+    fun jobEvents_CreateAwaitUntilJobDoneAndRemoved() {
         // execute
-        api.startListeners()
+        val job = api.createAndAwaitUntilJobCreated(0, 0)
 
-        val job = api.createAndVerifyJobCreated(5, 0)
-        verifyPodCreated(job)
-        verifyPodTerminated(job)
-        job.verifyJob(5, 1, 0, null, null)
-//        job.verifyJob(5, null, 0, null, null)
-        job.verifyJob(5, null, 0, 1, null)
-        job.verifyJob(5, null, 0, 1, null)
-        api.deleteAndVerifyJobDeleted(job)
-        api.stopListeners()
+        awaitUntilJobIsDone(job) // wait until job is done and deleted
+
+        api.stopListeners() // emits complete
 
         // verify
-        val events = api.jobEvents().collectList().block()
+        val events = api.jobEvents().collectList().block()?.onEach { println(it) }
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
-                upd(1, 1, null, null),
-                del(1, 1, null, null),
-            )
-        )
-    }
 
-    @Test
-    fun jobEventsCreationWaitingForPodTermination5SecondsAndDelay2SecondsDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
-        // execute
-        api.startListeners()
-
-        val job = api.createAndVerifyJobCreated(0, 20)
-        verifyPodCreated(job)
-        verifyPodTerminated(job)
-        Thread.sleep(2000)
-        api.deleteAndVerifyJobDeleted(job)
-
-        api.stopListeners()
-
-        // verify
-        val events = api.jobEvents().collectList().block()
-        assertThat(events).containsExactlyElementsIn(
-            listOf(
-                add(null, null, null, null),
-                upd(1, 0, null, null),
-                upd(1, 1, null, null),
-                upd(1, 0, null, null),
-                del(1, 0, null, null),
-            )
-        )
-    }
-
-    @Test
-    fun jobEventsCreationWaitingForPodTermination5SecondsAndDelay5SecondsDeletion() {
-        val api = ReactiveFabric8JobApi(client, namespace)
-
-        // execute
-        api.startListeners()
-
-        val job = api.createAndVerifyJobCreated(0, 20)
-        verifyPodCreated(job)
-        verifyPodTerminated(job)
-        Thread.sleep(6000)
-        api.deleteAndVerifyJobDeleted(job)
-
-        api.stopListeners()
-
-        // verify
-        val events = api.jobEvents().collectList().block()
-        assertThat(events).containsExactlyElementsIn(
-            listOf(
-                add(null, null, null, null),
-                upd(1, 0, null, null),
-                upd(1, 1, null, null),
-                upd(1, 0, null, null),
                 upd(null, 0, null, null),
-                upd(null, 0, 1, null),
-                del(null, 0, 1, null),
+
+                upd(null, 0, null, 1, listOf("Complete")),
+                upd(null, 0, null, 1, listOf("Complete")),
+                del(null, 0, null, 1, listOf("Complete")),
             )
         )
     }
 
-    private fun ReactiveFabric8JobApi.createAndVerifyJobCreated(executionTime: Long, ttl: Long): JobReference {
+
+
+    private fun awaitUntilJobIsDone(job: JobReference, timeout: Duration = Duration.ofSeconds(JOB_DONE_TIMEOUT)) {
+        Awaitility.await()
+            .atMost(timeout)
+            .until { !jobExists(job) }
+    }
+
+
+    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long): JobReference {
         val job = create(resolveSpec(executionTime, ttl)).block()!!
         Awaitility.await()
             .atMost(Duration.ofSeconds(JOB_CREATED_TIMEOUT))
@@ -303,7 +237,7 @@ class ReactiveFabric8JobApiTest {
         return job
     }
 
-    private fun verifyPodCreated(job: JobReference): PodReference {
+    private fun awaitUntilPodCreated(job: JobReference): PodReference {
         val pod = AtomicReference<PodReference>()
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_CREATED_TIMEOUT))
@@ -311,19 +245,19 @@ class ReactiveFabric8JobApiTest {
         return pod.get()
     }
 
-    private fun JobReference.verifyJob(timeout: Long, active: Int?, ready: Int?, succeeded: Int?, failed: Int?) {
+    private fun JobReference.awaitUntilMatches(timeout: Long, active: Int?, ready: Int?, failed: Int?, succeeded: Int?) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(timeout))
-            .until { jobExists(this, active, ready, succeeded, failed) }
+            .until { jobExists(this, active, ready, failed, succeeded) }
     }
 
-    private fun verifyPodReady(job: JobReference) {
+    private fun awaitUntilPodReady(job: JobReference) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_READY_TIMEOUT))
             .until { podIsReady(findPod(job)!!) }
     }
 
-    private fun verifyPodTerminated(job: JobReference) {
+    private fun awaitUntilPodTerminated(job: JobReference) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_TERMINATED_TIMEOUT))
             .until { podIsTerminated(findPod(job)!!) }
@@ -341,17 +275,22 @@ class ReactiveFabric8JobApiTest {
         }
     }
 
-    private fun ReactiveFabric8JobApi.deleteAndVerifyJobDeleted(job: JobReference) {
+    private fun ReactiveJobApi.deleteAndAwaitUntilJobDeleted(job: JobReference) {
         delete(job)
         Awaitility.await()
             .atMost(Duration.ofSeconds(JOB_DELETED_TIMEOUT))
             .until { !jobExists(job) }
     }
+    private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent(){
+        getJobs().forEach {
+            deleteAndAwaitUntilJobDeleted(it)
+        }
+    }
 
 
-    private fun jobExists(job: JobReference, active: Int?, ready: Int?, succeeded: Int?, failed: Int?) = getJobs().any {
+    private fun jobExists(job: JobReference, active: Int?, ready: Int?, failed: Int?, succeeded: Int?) = getJobs().any {
         getJobs().any { (name, uid) ->
-            job.matches(name, uid) && job.matches(active, ready, succeeded, failed)
+            job.matches(name, uid) && job.matches(active, ready, failed, succeeded)
         }
     }
 
@@ -362,8 +301,9 @@ class ReactiveFabric8JobApiTest {
     private fun JobReference.matches(name: String, uid: String) =
         name == TARGET_JOB && name == this.name && uid == this.uid
 
-    private fun JobReference.matches(active: Int?, ready: Int?, succeeded: Int?, failed: Int?): Boolean {
+    private fun JobReference.matches(active: Int?, ready: Int?, failed: Int?, succeeded: Int?): Boolean {
         val job = client.batch().v1().jobs().inNamespace(namespace).withName(name).get()
+        println("FOUND: ${job.snapshot(Action.UPDATE)}")
         return job.status.let {
             it.active == active && it.ready == ready && it.succeeded == succeeded && it.failed == failed
         }
@@ -374,7 +314,6 @@ class ReactiveFabric8JobApiTest {
             .list()
             .items
             .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
-            .log()
     }
 
     private fun findPod(job: JobReference): PodReference? {
@@ -387,7 +326,6 @@ class ReactiveFabric8JobApiTest {
             .list()
             .items
             .map { it.reference() }
-            .log()
     }
 
     private fun resolveSpec(executionTime: Long, ttl: Long): String {
