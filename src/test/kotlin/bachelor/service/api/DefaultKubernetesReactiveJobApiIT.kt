@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class ReactiveFabric8JobApiTest {
+class DefaultKubernetesReactiveJobApiIT {
 
     private val client = KubernetesClientBuilder()
         .withConfig(ConfigBuilder().build()).build()
@@ -34,7 +34,7 @@ class ReactiveFabric8JobApiTest {
     private val resolver = BaseJobTemplateFiller()
     private val jobSpecFile = "/template/job.yaml"
     private val jobSpecProvider =
-        JobTemplateFileLoader(File(ReactiveFabric8JobApiTest::class.java.getResource(jobSpecFile)!!.toURI()))
+        JobTemplateFileLoader(File(DefaultKubernetesReactiveJobApiIT::class.java.getResource(jobSpecFile)!!.toURI()))
 
     private val namespace = "client-test"
     private val JOB_CREATED_TIMEOUT = 5L
