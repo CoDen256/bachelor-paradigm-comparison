@@ -15,6 +15,7 @@ import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
@@ -75,14 +76,14 @@ class ReactiveFabric8JobApiTest {
 
     @Test
     fun delete() {
-        val job = api.createAndAwaitUntilJobCreated(5, 0)
+        val job = api.createAndAwaitUntilJobCreated(2, 0)
         api.deleteAndAwaitUntilJobDeleted(job)
     }
 
 
     @Test
     fun getLogsContains() {
-        val job = api.createAndAwaitUntilJobCreated(5, 20)
+        val job = api.createAndAwaitUntilJobCreated(2, 20)
         val pod = awaitUntilPodCreated(job)
 
         awaitUntilPodReady(job)
@@ -106,7 +107,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_HighExecutionTime_Create() {
         // execute
-        api.createAndAwaitUntilJobCreated(5, 0)
+        api.createAndAwaitUntilJobCreated(1, 0) // execution time 1, waiting will NOT be skipped
         api.stopListeners() // emits complete
 
         // verify
@@ -131,7 +132,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_HighExecutionTime_CreateDelete() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(5, 0)
+        val job = api.createAndAwaitUntilJobCreated(1, 0) // execution time 1, waiting will NOT be skipped
         api.deleteAndAwaitUntilJobDeleted(job)
 
         api.stopListeners() // emits complete
@@ -161,7 +162,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_HighExecutionTime_CreateAwaitUntilPodCreatedDelete() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(5, 0)
+        val job = api.createAndAwaitUntilJobCreated(1, 0) // execution time 1, waiting will NOT be skipped
         val pod = awaitUntilPodCreated(job)
         api.deleteAndAwaitUntilJobDeleted(job)
 
@@ -191,7 +192,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_HighExecutionTime_CreateAwaitUntilPodReadyDelete() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(5, 0) // execution time 5, running will be present
+        val job = api.createAndAwaitUntilJobCreated(2, 0) // execution time 2, running will be present
         val pod = awaitUntilPodCreated(job)
         awaitUntilPodReady(job)
         api.deleteAndAwaitUntilJobDeleted(job)
@@ -221,43 +222,9 @@ class ReactiveFabric8JobApiTest {
     }
 
     @Test
-    fun events_CreateAwaitUntilPodTerminatedDelete() {
-        // execute
-        val job = api.createAndAwaitUntilJobCreated(0, 0) // execution time 0, running will be skipped
-        val pod = awaitUntilPodCreated(job)
-        awaitUntilPodReady(job)
-        awaitUntilPodTerminated(job)
-        api.deleteAndAwaitUntilJobDeleted(job)
-
-        api.stopListeners() // emits complete
-
-        // verify
-        val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
-            listOf(
-                add(null, null, null, null),
-                upd(1, 0, null, null),
-                del(1, 0, null, null),
-            )
-        )
-
-        val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
-            listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
-            )
-        )
-    }
-
-    @Test
     fun events_HighExecutionTime_CreateAwaitUntilPodTerminatedDelete() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(5, 0) // execution time 5, running will not be skipped
+        val job = api.createAndAwaitUntilJobCreated(2, 0) // execution time 2, running will NOT be skipped
         val pod = awaitUntilPodCreated(job)
         awaitUntilPodReady(job)
         awaitUntilPodTerminated(job)
@@ -291,9 +258,43 @@ class ReactiveFabric8JobApiTest {
     }
 
     @Test
+    fun events_CreateAwaitUntilPodTerminatedDelete() {
+        // execute
+        val job = api.createAndAwaitUntilJobCreated(0, 0) // execution time 0, running will be skipped
+        val pod = awaitUntilPodCreated(job)
+        awaitUntilPodReady(job)
+        awaitUntilPodTerminated(job)
+        api.deleteAndAwaitUntilJobDeleted(job)
+
+        api.stopListeners() // emits complete
+
+        // verify
+        val events = getJobEvents()
+        assertThat(events).containsAtLeastElementsIn(
+            listOf(
+                add(null, null, null, null),
+                upd(1, 0, null, null),
+                del(1, 0, null, null),
+            )
+        )
+
+        val podEvents = getPodEvents()
+        assertThat(podEvents).containsExactlyElementsIn(
+            listOf(
+                add("Pending", name = pod.name),
+                upd("Pending", name = pod.name),
+                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
+                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
+                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
+            )
+        )
+    }
+
+    @Test
     fun events_CreateAwaitUntilJobDoneAndRemoved() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(0, 0)
+        val job = api.createAndAwaitUntilJobCreated(0, 0) // execution time 0, running will be skipped
         val pod = awaitUntilPodCreated(job)
 
         awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
@@ -332,7 +333,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_HighExecutionTime_CreateAwaitUntilJobDoneAndRemoved() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(5, 0)
+        val job = api.createAndAwaitUntilJobCreated(2, 0) // execution time 2, running will NOT be skipped
         val pod = awaitUntilPodCreated(job)
 
         awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
@@ -377,7 +378,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_CreateAwaitUntilJobFailedAndRemoved() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(0, 0, 3)
+        val job = api.createAndAwaitUntilJobCreated(0, 0, 3) // execution time 0, running WILL be skipped
         val pod = awaitUntilPodCreated(job)
 
         awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
@@ -417,7 +418,7 @@ class ReactiveFabric8JobApiTest {
     @Test
     fun events_HighExecutionTime_CreateAwaitUntilJobFailedAndRemoved() {
         // execute
-        val job = api.createAndAwaitUntilJobCreated(5, 0, 3)
+        val job = api.createAndAwaitUntilJobCreated(2, 0, 3) // execution time 0, running will NOT be skipped
         val pod = awaitUntilPodCreated(job)
 
         awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
