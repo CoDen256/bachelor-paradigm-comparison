@@ -27,14 +27,14 @@ fun Pod.reference() = PodReference(this.metadata.name, this.metadata.namespace ?
 // EVENTS
 fun <T : HasMetadata> noop() = ResourceEvent<T>(Action.NOOP, null)
 
-fun add(phase: String, targetState: KubernetesResource? = null) =
-    ResourceEvent(Action.ADD, newPod(TARGET_POD, phase, TARGET_JOB, targetState))
+fun add(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
+    ResourceEvent(Action.ADD, newPod(name, phase, TARGET_JOB, targetState))
 
-fun upd(phase: String, targetState: KubernetesResource? = null) =
-    ResourceEvent(Action.UPDATE, newPod(TARGET_POD, phase, TARGET_JOB, targetState))
+fun upd(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
+    ResourceEvent(Action.UPDATE, newPod(name, phase, TARGET_JOB, targetState))
 
-fun del(phase: String, targetState: KubernetesResource? = null) =
-    ResourceEvent(Action.DELETE, newPod(TARGET_POD, phase, TARGET_JOB, targetState))
+fun del(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
+    ResourceEvent(Action.DELETE, newPod(name, phase, TARGET_JOB, targetState))
 
 fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
     ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions))
@@ -123,10 +123,10 @@ fun unknownPod(name: String = TARGET_POD, job: String = TARGET_JOB): Pod {
     return newPod(name, "Pending", job, null)
 }
 
-fun containerStateWaiting(): ContainerStateWaiting = ContainerStateWaiting("", "")
-fun containerStateRunning(): ContainerStateRunning = ContainerStateRunning("0000")
-fun containerStateTerminated(code: Int): ContainerStateTerminated =
-    ContainerStateTerminated("", code, "1111", "", "", 0, "")
+fun containerStateWaiting(reason: String = "", message: String = ""): ContainerStateWaiting = ContainerStateWaiting(message, reason)
+fun containerStateRunning(startedAt: String = "0000"): ContainerStateRunning = ContainerStateRunning(startedAt)
+fun containerStateTerminated(code: Int, reason: String = "", message: String = "", finishedAt: String = "1111"): ContainerStateTerminated =
+    ContainerStateTerminated("", code, finishedAt, message, reason, 0, "")
 
 fun newPod(name: String, phase: String, job: String, state: KubernetesResource? = null): Pod {
     val meta = ObjectMetaBuilder()

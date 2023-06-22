@@ -30,6 +30,7 @@ data class ActivePodSnapshot(val pod: Pod, val lastAction: String) : PodSnapshot
     val phase: String = getPhase(pod)
 
     override fun toString(): String {
+        return "$phase/$mainContainerState"
         return "Pod($name/$phase/$mainContainerState)[${lastAction.take(1)}]"
     }
 
@@ -55,16 +56,17 @@ data class ActivePodSnapshot(val pod: Pod, val lastAction: String) : PodSnapshot
 }
 
 sealed interface ContainerState
+
 data class WaitingState(val reason: String, val message: String) : ContainerState {
-    override fun toString(): String = "Waiting"
+    override fun toString(): String = "Waiting($reason:$message)"
 }
 
 data class RunningState(val startedAt: String) : ContainerState {
-    override fun toString(): String = "Running"
+    override fun toString(): String = "Running($startedAt)"
 }
 
 data class TerminatedState(val reason: String, val message: String, val exitCode: Int) : ContainerState {
-    override fun toString(): String = "Terminated($exitCode)"
+    override fun toString(): String = "Terminated($exitCode|$reason:$message)"
 }
 
 object UnknownState : ContainerState {
