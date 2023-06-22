@@ -8,8 +8,8 @@ import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.apis.BatchV1Api
+import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.models.V1Job
-import io.kubernetes.client.openapi.models.V1Service
 import io.kubernetes.client.util.Yaml
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -24,9 +24,9 @@ class DefaultKubernetesReactiveJobApi(
     }
 
     private val batchV1Api = BatchV1Api(client)
+    private val coreV1Api = CoreV1Api(client)
 
     override fun create(spec: String): Mono<JobReference> {
-        Yaml.addModelMap("v1", "Job", V1Job::class.java)
         val job = Yaml.load(spec) as V1Job
         return batchV1Api
             .createNamespacedJob(namespace, job, null, null, null, null)
@@ -48,7 +48,10 @@ class DefaultKubernetesReactiveJobApi(
     }
 
     override fun getLogs(pod: PodReference): Mono<String> {
-        return Mono.empty()
+        return coreV1Api
+            .readNamespacedPodLog(pod.name, pod.namespace,
+            null, null, null, null, null, null, null, null, null)
+            .toMono()
     }
 
     override fun stopListeners() {
