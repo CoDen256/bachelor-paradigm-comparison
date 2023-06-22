@@ -4,7 +4,7 @@ import bachelor.kubernetes.utils.*
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
 import bachelor.service.api.ReactiveJobApi
 import bachelor.reactive.kubernetes.events.Action.*
-import bachelor.service.api.snapshot
+import bachelor.service.config.fabric8.snapshot
 import bachelor.service.api.snapshot.*
 import bachelor.service.executor.*
 import io.fabric8.kubernetes.api.model.*

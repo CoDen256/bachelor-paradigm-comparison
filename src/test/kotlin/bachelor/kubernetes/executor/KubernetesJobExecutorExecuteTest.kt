@@ -1,10 +1,9 @@
 package bachelor.kubernetes.executor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.service.api.ReactiveJobApi
 import bachelor.reactive.kubernetes.events.Action.*
 import bachelor.reactive.kubernetes.events.ResourceEvent
-import bachelor.service.api.snapshot
+import bachelor.service.config.fabric8.snapshot
 import bachelor.service.executor.*
 import io.fabric8.kubernetes.api.model.*
 import org.apache.logging.log4j.LogManager
@@ -21,6 +20,7 @@ import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
 import reactor.test.StepVerifier
 import bachelor.kubernetes.utils.*
+import bachelor.service.api.*
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.snapshot.*
 import java.time.Duration

@@ -4,7 +4,7 @@ package bachelor.kubernetes.utils
 import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.resources.PodReference
-import bachelor.service.api.snapshot
+import bachelor.service.config.fabric8.snapshot
 import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.Snapshot

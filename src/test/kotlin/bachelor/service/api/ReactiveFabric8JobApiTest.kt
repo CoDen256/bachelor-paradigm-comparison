@@ -9,8 +9,10 @@ import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.RunningState
 import bachelor.service.api.snapshot.WaitingState
-import bachelor.service.utils.BaseJobTemplateFiller
-import bachelor.service.utils.JobTemplateFileLoader
+import bachelor.service.config.fabric8.Fabric8ReactiveJobApi
+import bachelor.service.config.fabric8.snapshot
+import bachelor.service.config.utils.BaseJobTemplateFiller
+import bachelor.service.config.utils.JobTemplateFileLoader
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder

@@ -1,9 +1,9 @@
 package bachelor.service.api.snapshot
 
-import bachelor.service.api.getJobConditions
-import bachelor.service.api.getJobStatus
-import bachelor.service.api.getMainContainerState
-import bachelor.service.api.getPhase
+import bachelor.service.config.fabric8.getJobConditions
+import bachelor.service.config.fabric8.getJobStatus
+import bachelor.service.config.fabric8.getMainContainerState
+import bachelor.service.config.fabric8.getPhase
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 

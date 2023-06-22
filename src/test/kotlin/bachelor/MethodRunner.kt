@@ -1,11 +1,11 @@
 package bachelor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.service.api.ReactiveFabric8JobApi
+import bachelor.service.config.fabric8.Fabric8ReactiveJobApi
 import bachelor.service.run.ImageRunRequest
 import bachelor.service.run.KubernetesBasedImageRunner
-import bachelor.service.utils.BaseJobTemplateFiller
-import bachelor.service.utils.JobTemplateFileLoader
+import bachelor.service.config.utils.BaseJobTemplateFiller
+import bachelor.service.config.utils.JobTemplateFileLoader
 import com.google.gson.reflect.TypeToken
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
@@ -27,7 +27,7 @@ class MethodRunner {
     private val client = KubernetesClientBuilder()
         .withConfig(ConfigBuilder().build()).build()
 
-    private val api = ReactiveFabric8JobApi(client, "calculations")
+    private val api = Fabric8ReactiveJobApi(client, "calculations")
 
     private val templateLoader = JobTemplateFileLoader(
         File("template.yaml")

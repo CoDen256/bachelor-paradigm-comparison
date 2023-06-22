@@ -1,6 +1,6 @@
 package bachelor.template
 
-import bachelor.service.utils.BaseJobTemplateFiller
+import bachelor.service.config.utils.BaseJobTemplateFiller
 import bachelor.service.run.ImageRunRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

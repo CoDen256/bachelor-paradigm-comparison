@@ -1,6 +1,7 @@
-package bachelor.service.utils
+package bachelor.service.config.utils
 
 import bachelor.service.run.ImageRunRequest
+import bachelor.service.utils.JobTemplateFiller
 import org.apache.commons.text.StringSubstitutor
 
 /**

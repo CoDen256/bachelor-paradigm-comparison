@@ -1,5 +1,6 @@
-package bachelor.service.utils
+package bachelor.service.config.utils
 
+import bachelor.service.utils.JobTemplateProvider
 import org.apache.logging.log4j.LogManager
 import java.io.File
 
