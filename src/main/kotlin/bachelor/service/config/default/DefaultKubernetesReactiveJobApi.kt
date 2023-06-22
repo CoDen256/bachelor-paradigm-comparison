@@ -6,41 +6,54 @@ import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
+import io.kubernetes.client.openapi.ApiClient
+import io.kubernetes.client.openapi.apis.BatchV1Api
+import io.kubernetes.client.openapi.models.V1Job
+import io.kubernetes.client.openapi.models.V1Service
+import io.kubernetes.client.util.Yaml
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.toMono
+
 
 class DefaultKubernetesReactiveJobApi(
-
-): ReactiveJobApi {
+    client: ApiClient,
+    private val namespace: String
+) : ReactiveJobApi {
     override fun startListeners() {
-        TODO("Not yet implemented")
     }
 
+    private val batchV1Api = BatchV1Api(client)
+
     override fun create(spec: String): Mono<JobReference> {
-        TODO("Not yet implemented")
+        Yaml.addModelMap("v1", "Job", V1Job::class.java)
+        val job = Yaml.load(spec) as V1Job
+        return batchV1Api
+            .createNamespacedJob(namespace, job, null, null, null, null)
+            .toMono()
+            .map { JobReference(it.metadata!!.name!!, it.metadata!!.uid!!, it.metadata!!.namespace!!) }
     }
 
     override fun delete(job: JobReference) {
-        TODO("Not yet implemented")
+        batchV1Api // Propagation policy background deletes the dependents as well (the pod)
+            .deleteNamespacedJob(job.name, namespace, null, null, null, null, "Background", null)
     }
 
     override fun podEvents(): Flux<ResourceEvent<ActivePodSnapshot>> {
-        TODO("Not yet implemented")
+        return Flux.empty()
     }
 
     override fun jobEvents(): Flux<ResourceEvent<ActiveJobSnapshot>> {
-        TODO("Not yet implemented")
+        return Flux.empty()
     }
 
     override fun getLogs(pod: PodReference): Mono<String> {
-        TODO("Not yet implemented")
+        return Mono.empty()
     }
 
     override fun stopListeners() {
-        TODO("Not yet implemented")
     }
 
     override fun close() {
-        TODO("Not yet implemented")
     }
 }

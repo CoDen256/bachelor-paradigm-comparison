@@ -13,6 +13,7 @@ import io.kubernetes.client.openapi.Configuration
 import io.kubernetes.client.openapi.apis.BatchV1Api
 import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.models.V1Namespace
+import io.kubernetes.client.util.ClientBuilder
 import io.kubernetes.client.util.Config
 import io.kubernetes.client.util.Watch
 import org.junit.jupiter.api.Test
@@ -20,6 +21,7 @@ import java.io.File
 import java.lang.Boolean
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+
 
 class MethodRunner {
 
@@ -54,6 +56,9 @@ class MethodRunner {
     @Test
     fun imperativeJobExecutor() {
         return
+        val apiClient = ClientBuilder.standard().build()
+//        apiClient.
+
         val client = Config.defaultClient()
         // infinite timeout
         // infinite timeout

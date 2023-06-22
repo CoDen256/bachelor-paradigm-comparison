@@ -9,19 +9,21 @@ import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.RunningState
 import bachelor.service.api.snapshot.WaitingState
-import bachelor.service.config.fabric8.Fabric8ReactiveJobApi
+import bachelor.service.config.default.DefaultKubernetesReactiveJobApi
 import bachelor.service.config.fabric8.snapshot
 import bachelor.service.config.utils.BaseJobTemplateFiller
 import bachelor.service.config.utils.JobTemplateFileLoader
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
+import io.kubernetes.client.util.Config
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -30,6 +32,13 @@ class DefaultKubernetesReactiveJobApiIT {
 
     private val client = KubernetesClientBuilder()
         .withConfig(ConfigBuilder().build()).build()
+
+    private val apiClient = Config.defaultClient()
+
+    init {
+        val httpClient = apiClient.httpClient.newBuilder().readTimeout(0, TimeUnit.SECONDS).build()
+        apiClient.setHttpClient(httpClient)
+    }
 
     private val resolver = BaseJobTemplateFiller()
     private val jobSpecFile = "/template/job.yaml"
@@ -51,7 +60,7 @@ class DefaultKubernetesReactiveJobApiIT {
 
     @BeforeEach
     fun setup(){
-        api = Fabric8ReactiveJobApi(client, namespace)
+        api = DefaultKubernetesReactiveJobApi(apiClient, namespace)
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.startListeners()
     }

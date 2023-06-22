@@ -76,7 +76,6 @@ class ReactiveFabric8ReactiveJobApiIT {
         awaitUntilJobDoesNotExist(job)
     }
 
-
     @Test
     fun delete() {
         val job = api.createAndAwaitUntilJobCreated(2, 0)
