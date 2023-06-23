@@ -59,18 +59,18 @@ fun mapContainerState(status: KubernetesContainerState): ContainerState {
     return status.run {
         when {
             terminated != null -> TerminatedState(
-                terminated.reason ?: "",
-                terminated.message ?: "",
-                terminated.exitCode
+                terminated?.reason ?: "",
+                terminated?.message ?: "",
+                terminated?.exitCode ?: -1
             )
 
             running != null -> RunningState(
-                running.startedAt ?: "",
+                running?.startedAt ?: "",
             )
 
             waiting != null -> WaitingState(
-                waiting.reason ?: "",
-                waiting.message ?: "",
+                waiting?.reason ?: "",
+                waiting?.message ?: "",
             )
 
             else -> UnknownState
