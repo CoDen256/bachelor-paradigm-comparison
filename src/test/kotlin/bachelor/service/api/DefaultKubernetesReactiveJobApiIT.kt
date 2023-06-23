@@ -136,15 +136,15 @@ class DefaultKubernetesReactiveJobApiIT {
                 upd(1, 0, null, null),
             )
         )
-//        val podEvents = getPodEvents()
-//        val name = podEvents[0].element!!.name
-//        assertThat(podEvents).containsExactlyElementsIn(
-//            listOf(
-//                add("Pending", name = name),
-//                upd("Pending", name = name),
-//                upd("Pending", containerStateWaiting("ContainerCreating"), name = name),
-//            )
-//        )
+        val podEvents = getPodEvents()
+        val name = podEvents[0].element!!.name
+        assertThat(podEvents).containsExactlyElementsIn(
+            listOf(
+                add("Pending", name = name),
+                upd("Pending", name = name),
+                upd("Pending", containerStateWaiting("ContainerCreating"), name = name),
+            )
+        )
     }
 
     @Test

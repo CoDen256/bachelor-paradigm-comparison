@@ -9,7 +9,6 @@ import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.Snapshot
 import com.google.gson.reflect.TypeToken
-import io.fabric8.kubernetes.client.utils.CachedSingleThreadScheduler
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.apis.BatchV1Api
 import io.kubernetes.client.openapi.apis.CoreV1Api
@@ -46,21 +45,28 @@ class DefaultKubernetesClientReactiveJobApi(
 
 
     private var jobWatch: Watch<V1Job>? = null
+    private var podWatch: Watch<V1Pod>? = null
     private val jobWatchResponseType = object : TypeToken<Watch.Response<V1Job>>() {}.type
     private val podWatchResponseType = object : TypeToken<Watch.Response<V1Pod>>() {}.type
+
+    private val executor = Executors.newFixedThreadPool(2)
+    // TODO: give from outside, maybe the same for fabric8
 
     override fun startListeners() {
         if (!watchesStarted.compareAndSet(false, true)) {
             error("Watches are already started!")
         }
-        val watch: Watch<V1Job> = Watch.createWatch(client, watchJobCall, jobWatchResponseType)
-        jobWatch = watch
-        Executors.newSingleThreadExecutor().submit {
-            watch.forEachRemaining {
-                println(it.type)
-                println(it.status)
-                jobEventSink.tryEmitNext(mapWatchJobResponse(it))
-            }
+        val jobWatch: Watch<V1Job> = Watch.createWatch<V1Job?>(client, watchJobCall, jobWatchResponseType).also {
+            this.jobWatch = it
+        }
+        val podWatch: Watch<V1Pod> = Watch.createWatch<V1Pod?>(client, watchPodCall, podWatchResponseType).also {
+            this.podWatch = it
+        }
+        executor.submit {
+            jobWatch.forEachRemaining { jobEventSink.tryEmitNext(mapWatchJobResponse(it)) }
+        }
+        executor.submit {
+            podWatch.forEachRemaining { podEventSink.tryEmitNext(mapWatchPodResponse(it)) }
         }
     }
 
@@ -85,8 +91,9 @@ class DefaultKubernetesClientReactiveJobApi(
         return cachedJobEvents
     }
 
-    private fun mapWatchJobResponse(it: Watch.Response<V1Job>) =
-        resourceEvent(it.type, it.`object`.snapshot())
+    private fun mapWatchJobResponse(it: Watch.Response<V1Job>) = resourceEvent(it.type, it.`object`.snapshot())
+
+    private fun mapWatchPodResponse(it: Watch.Response<V1Pod>) = resourceEvent(it.type, it.`object`.snapshot())
 
     override fun getLogs(pod: PodReference): Mono<String> {
         return coreV1Api
@@ -100,6 +107,7 @@ class DefaultKubernetesClientReactiveJobApi(
         jobEventSink.tryEmitComplete()
         podEventSink.tryEmitComplete()
         jobWatch?.close()
+        podWatch?.close()
     }
 
     override fun close() {
