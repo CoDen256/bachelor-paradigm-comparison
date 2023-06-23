@@ -10,6 +10,7 @@ import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.RunningState
 import bachelor.service.api.snapshot.WaitingState
 import bachelor.service.config.fabric8.Fabric8ReactiveJobApi
+import bachelor.service.config.fabric8.reference
 import bachelor.service.config.fabric8.snapshot
 import bachelor.service.config.utils.BaseJobTemplateFiller
 import bachelor.service.config.utils.JobTemplateFileLoader
@@ -20,6 +21,7 @@ import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.io.File
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
@@ -105,6 +107,10 @@ class ReactiveFabric8ReactiveJobApiIT {
         assertEquals(logs, "start\nslept 0\nend\n")
     }
 
+    @Test
+    fun eventsListenerStartedTwice() {
+        assertThrows<IllegalStateException> { api.startListeners() }
+    }
 
     @Test
     fun events_HighExecutionTime_Create() {

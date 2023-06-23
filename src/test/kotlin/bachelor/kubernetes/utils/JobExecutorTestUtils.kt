@@ -3,14 +3,12 @@ package bachelor.kubernetes.utils
 
 import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
-import bachelor.service.api.resources.PodReference
-import bachelor.service.config.fabric8.snapshot
 import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.Snapshot
+import bachelor.service.config.fabric8.snapshot
 import bachelor.service.utils.DelayedEmitterBuilder
 import io.fabric8.kubernetes.api.model.*
-import io.fabric8.kubernetes.api.model.ContainerState
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
 import io.fabric8.kubernetes.api.model.batch.v1.JobCondition
@@ -18,13 +16,10 @@ import io.fabric8.kubernetes.api.model.batch.v1.JobStatusBuilder
 import org.junit.jupiter.api.Assertions
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import java.lang.IllegalArgumentException
 import java.time.Duration
 
 const val TARGET_JOB = "target-job" // fake job id
 const val TARGET_POD = "target-pod" // fake pod id
-
-fun Pod.reference() = PodReference(this.metadata.name, this.metadata.namespace ?: "", this.metadata.labels["controller-uid"] ?: "")
 
 // EVENTS
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)

@@ -224,8 +224,8 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
         uid: String
     ): Flux<ExecutionSnapshot> {
 
-        val relevantJobStream = jobs.filter { it.job.metadata.uid == uid }
-        val relevantPodStream = pods.filter { it.pod.metadata.labels["controller-uid"] == uid }
+        val relevantJobStream = jobs.filter { it.uid == uid }
+        val relevantPodStream = pods.filter { it.controllerUid == uid }
 
         val relevantJobStreamWithInitialSnapshot = insertAtStart(InitialJobSnapshot, relevantJobStream)
         val relevantPodStreamWithInitialSnapshot = insertAtStart(InitialPodSnapshot, relevantPodStream)
@@ -367,7 +367,7 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
      */
     private fun getLogs(podSnapshot: PodSnapshot): Mono<Logs> {
         if (podSnapshot !is ActivePodSnapshot) return Mono.empty()
-        return api.getLogs(PodReference(podSnapshot.pod.metadata.name, podSnapshot.pod.metadata.namespace ?: "", podSnapshot.pod.metadata.labels["controller-uid"] ?: "")).map { Logs(it) }
+        return api.getLogs(PodReference(podSnapshot.name, podSnapshot.namespace, podSnapshot.controllerUid)).map { Logs(it) }
     }
 
     /**

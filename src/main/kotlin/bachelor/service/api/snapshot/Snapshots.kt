@@ -1,11 +1,7 @@
 package bachelor.service.api.snapshot
 
-import bachelor.service.config.fabric8.getJobConditions
-import bachelor.service.config.fabric8.getJobStatus
-import bachelor.service.config.fabric8.getMainContainerState
-import bachelor.service.config.fabric8.getPhase
-import io.fabric8.kubernetes.api.model.Pod
-import io.fabric8.kubernetes.api.model.batch.v1.Job
+import bachelor.service.api.resources.JobReference
+import bachelor.service.api.resources.PodReference
 
 sealed interface Snapshot
 
@@ -31,11 +27,13 @@ object InitialJobSnapshot : JobSnapshot {
  * - status: a set of numerical properties, describing the state of a job
  *   (amount of active/running/failed/successful pods)
  */
-data class ActiveJobSnapshot(val job: Job, val lastAction: String="NOOP") : JobSnapshot {
-    val name: String = job.metadata?.name ?: "[Job name not available]"
-    val conditions: List<JobCondition> = getJobConditions(job)
+data class ActiveJobSnapshot(val name: String,
+                             val uid: String,
+                             val namespace: String,
+                             val conditions: List<JobCondition>,
+                             val status: JobStatus,
+                             val lastAction: String="NOOP") : JobSnapshot {
     val trueConditions: List<JobCondition> get() = conditions.filter { it.status.lowercase() == "true" }
-    val status: JobStatus = getJobStatus(job)
 
     override fun toString(): String {
         return "$status${if (trueConditions.isNotEmpty()) trueConditions.map { it.type } else "" }"
@@ -58,6 +56,9 @@ data class ActiveJobSnapshot(val job: Job, val lastAction: String="NOOP") : JobS
         return result
     }
 
+    fun reference(): JobReference{
+        return JobReference(name, uid, namespace)
+    }
 
 }
 
@@ -113,10 +114,12 @@ object InitialPodSnapshot : PodSnapshot {
  * contains information about its status and states, like phase
  * or state of the main container at a particular point in time.
  */
-data class ActivePodSnapshot(val pod: Pod, val lastAction: String="NOOP") : PodSnapshot {
-    val name: String = pod.metadata?.name ?: "[Pod name unavailable]"
-    val mainContainerState: ContainerState = getMainContainerState(pod)
-    val phase: String = getPhase(pod)
+data class ActivePodSnapshot(val name: String,
+                             val namespace: String,
+                             val controllerUid: String,
+                             val mainContainerState: ContainerState,
+                             val phase: String,
+                             val lastAction: String="NOOP") : PodSnapshot {
 
     override fun toString(): String {
         return "$phase/$mainContainerState"
@@ -139,6 +142,9 @@ data class ActivePodSnapshot(val pod: Pod, val lastAction: String="NOOP") : PodS
         return result
     }
 
+    fun reference(): PodReference{
+        return PodReference(name, namespace, controllerUid)
+    }
 
 }
 

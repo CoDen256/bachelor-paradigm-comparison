@@ -11,7 +11,7 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-class ImperativeJobExecutor(
+class   ImperativeJobExecutor(
     private val client: JobApiClient,
 ) : JobExecutor {
 
