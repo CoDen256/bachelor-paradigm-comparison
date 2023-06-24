@@ -7,15 +7,15 @@ import org.junit.jupiter.api.Test
 class BaseJobTemplateFillerTest {
 
     private val substitutor = BaseJobTemplateFiller()
-    private val imagePlaceholder = "\${CALCULATION_IMAGE_NAME}"
+    private val imagePlaceholder = "\${IMAGE_NAME}"
     private val argPlaceholder = "\${ARGUMENTS}"
-    private val tagPlaceholder = "\${CALCULATION_IMAGE_TAG}"
+    private val namePlaceholder = "\${NAME}"
 
     @Test
     fun substituteWithoutArgs() {
         val result = substitutor.fill(
             "$imagePlaceholder:[ $argPlaceholder ]",
-            ImageRunRequest.from("imageName", "script", listOf())
+            ImageRunRequest("", "", "imageName", arguments = listOf("script"))
         )
         assertEquals("imageName:[ \"script\" ]", result)
     }
@@ -23,7 +23,8 @@ class BaseJobTemplateFillerTest {
     @Test
     fun substituteWithOneArg() {
         val result = substitutor.fill("$imagePlaceholder:\n[ $argPlaceholder ]",
-            ImageRunRequest.from("image name", "script 2.py", listOf(
+            ImageRunRequest("", "", "image name",  arguments = listOf(
+                "script 2.py",
                 "arg0"
             ))
         )
@@ -32,19 +33,20 @@ class BaseJobTemplateFillerTest {
 
     @Test
     fun substituteWithCustomTag() {
-        val result = substitutor.fill("$imagePlaceholder:$tagPlaceholder\n[ $argPlaceholder ]",
-            ImageRunRequest.from("image name", "script 2.py", listOf(
+        val result = substitutor.fill("$namePlaceholder/$imagePlaceholder\n[ $argPlaceholder ]",
+            ImageRunRequest("job", "", "image name:1.10", arguments = listOf(
+                "script 2.py",
                 "arg0"
-            ), "1.10")
+            ))
         )
-        assertEquals("image name:1.10\n[ \"script 2.py\", \"arg0\" ]", result)
+        assertEquals("job/image name:1.10\n[ \"script 2.py\", \"arg0\" ]", result)
     }
 
     @Test
     fun substituteWithComplexArguments() {
         val result = substitutor.fill("$imagePlaceholder\n- args : [ $argPlaceholder ]",
-            ImageRunRequest.from("test-script", "main.R", listOf(
-                "NPS", " 01-01-2001 10:00:00 ", """ -extraarg="extra arg" """
+            ImageRunRequest("", "", "test-script", arguments = listOf(
+                "main.R", "NPS", " 01-01-2001 10:00:00 ", """ -extraarg="extra arg" """
             ))
         )
         assertEquals("test-script\n" +
@@ -54,12 +56,34 @@ class BaseJobTemplateFillerTest {
 
     @Test
     fun substituteFullTemplateFile() {
-        val template = BaseJobTemplateFillerTest::class.java.getResource("/template/template.yaml")!!.readText()
-        val expected = BaseJobTemplateFillerTest::class.java.getResource("/template/template-values.yaml")!!.readText()
+        val template = BaseJobTemplateFillerTest::class.java.getResource("/template/job.yaml")!!.readText()
+        val expected = BaseJobTemplateFillerTest::class.java.getResource("/template/job-values.yaml")!!.readText()
 
 
         val result = substitutor.fill(template,
-            ImageRunRequest.from("test-script", "script.py", listOf("1", "10-10-2000 10:00:00", " hustensaft "), "1.0"),
+            ImageRunRequest(
+                "test-script-job",
+                "default",
+                "docker.optimax.cloud/kubernetes/test-script:1.0",
+                "python",
+                20,
+                2000,
+                listOf("script.py", "1", "10-10-2000 10:00:00", " hustensaft "))
+        )
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun substituteDefaultTemplateFile() {
+        val template = BaseJobTemplateFillerTest::class.java.getResource("/template/job.yaml")!!.readText()
+        val expected = BaseJobTemplateFillerTest::class.java.getResource("/template/job-default.yaml")!!.readText()
+
+
+        val result = substitutor.fill(template,
+            ImageRunRequest(
+                "test-script-job",
+                "default",
+                "docker.optimax.cloud/kubernetes/test-script:1.0")
         )
         assertEquals(expected, result)
     }

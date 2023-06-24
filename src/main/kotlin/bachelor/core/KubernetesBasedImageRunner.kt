@@ -58,10 +58,7 @@ class KubernetesBasedImageRunner(
      * @param request the image to execute
      * @return logs of the executed image
      */
-    fun run(
-        request: ImageRunRequest, runningTimeout: Duration,
-        terminatedTimeout: Duration
-    ): Mono<ExecutionSnapshot> = Mono.defer {
+    fun run(request: ImageRunRequest, runningTimeout: Duration, terminatedTimeout: Duration): Mono<ExecutionSnapshot> = Mono.defer {
         logger.info("Running $request")
 
         val template = templateProvider.getTemplate()

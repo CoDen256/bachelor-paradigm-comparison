@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: default
+  name: test-script-job
+spec:
+  ttlSecondsAfterFinished: 0
+  activeDeadlineSeconds: 1000
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - name: main
+          image: docker.optimax.cloud/kubernetes/test-script:1.0
+          command: [ "/bin/sh" ]
+          args: [  ]
+      restartPolicy: Never

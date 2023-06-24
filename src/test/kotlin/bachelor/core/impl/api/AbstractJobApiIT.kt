@@ -4,9 +4,6 @@ import bachelor.core.api.JobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.impl.api.fabric8.reference
-import bachelor.core.impl.template.BaseJobTemplateFiller
-import bachelor.core.impl.template.JobTemplateFileLoader
-import bachelor.core.template.JobTemplateFiller
 import bachelor.core.utils.generate.*
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.resolveSpec
@@ -21,7 +18,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.io.File
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
@@ -31,11 +27,6 @@ abstract class AbstractJobApiIT(
     private val newJobApi: (String) -> JobApi
 ) {
     private val helperClient = createHelperClient()
-
-    private val resolver = BaseJobTemplateFiller()
-    private val jobSpecFile = "/template/job.yaml"
-    private val jobSpecProvider = JobTemplateFileLoader(File(this::class.java.getResource(jobSpecFile)!!.toURI()))
-
     private lateinit var api: JobApi
 
     @BeforeEach
@@ -507,7 +498,7 @@ abstract class AbstractJobApiIT(
         exitCode: Int = 0,
         fail: Boolean = false
     ): JobReference {
-        val job = create(resolver.resolveSpec(jobSpecProvider.getTemplate(), executionTime, ttl, exitCode, fail))
+        val job = create(resolveSpec( executionTime, ttl, exitCode, fail))
         awaitUntilJobCreated(job)
         return job
     }

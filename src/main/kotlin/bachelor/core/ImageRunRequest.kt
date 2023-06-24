@@ -19,24 +19,16 @@ package bachelor.core
  */
 data class ImageRunRequest(
     val name: String,
-    val script: String,
-    val arguments: List<String>,
-    val tag: String
+    val namespace: String,
+    val image: String,
+    val command: String? = null,
+    val ttl: Long? = null,
+    val activeDeadlineSeconds: Long? = null,
+    val arguments: List<String> = listOf(),
 ) {
 
     override fun toString(): String {
-        return "$name:$tag/$script[$arguments]"
-    }
-
-    companion object {
-        fun from(
-            imageName: String,
-            script: String,
-            arguments: List<String>,
-            tag: String? = null
-        ): ImageRunRequest {
-            return ImageRunRequest(imageName, script, arguments, tag ?: "latest")
-        }
+        return "$name:$image/[$arguments]"
     }
 
 }

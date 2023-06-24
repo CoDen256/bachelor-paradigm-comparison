@@ -19,23 +19,29 @@ import org.apache.commons.text.StringSubstitutor
 class BaseJobTemplateFiller : JobTemplateFiller {
 
     companion object {
-        const val IMAGE_PLACEHOLDER = "CALCULATION_IMAGE_NAME"
-        const val TAG_PLACEHOLDER = "CALCULATION_IMAGE_TAG"
+        const val NAME_PLACEHOLDER = "NAME"
+        const val IMAGE_PLACEHOLDER = "IMAGE_NAME"
+        const val NAMESPACE_PLACEHOLDER = "NAMESPACE"
+        const val COMMAND_PLACEHOLDER = "COMMAND"
+        const val TTL_PLACEHOLDER = "TTL"
+        const val ACTIVE_DEADLINE_SECONDS_PLACEHOLDER = "ACTIVE_DEADLINE"
         const val ARGUMENTS_PLACEHOLDER = "ARGUMENTS"
     }
 
 
     override fun fill(template: String, spec: ImageRunRequest): String {
-        return StringSubstitutor.replace(
-            template,
-            mapOf(
-                IMAGE_PLACEHOLDER to spec.name,
-                TAG_PLACEHOLDER to spec.tag,
-                ARGUMENTS_PLACEHOLDER to substituteArguments(spec.arguments.toMutableList().also {
-                    it.add(0, spec.script)
-                })
-            )
-        )
+        val values = HashMap<String, String>(mapOf(
+            NAME_PLACEHOLDER to spec.name,
+            NAMESPACE_PLACEHOLDER to spec.namespace,
+            IMAGE_PLACEHOLDER to spec.image,
+        ))
+
+        values[COMMAND_PLACEHOLDER] =  quote(spec.command ?: "/bin/sh")
+        values[TTL_PLACEHOLDER] = "${spec.ttl ?: 0}"
+        values[ACTIVE_DEADLINE_SECONDS_PLACEHOLDER] = "${spec.activeDeadlineSeconds ?: 1000}"
+        values[ARGUMENTS_PLACEHOLDER] = substituteArguments(spec.arguments.toMutableList())
+
+        return StringSubstitutor.replace(template, values)
     }
 
     override fun fill(template: String, values: Map<String, String>): String {
@@ -43,8 +49,8 @@ class BaseJobTemplateFiller : JobTemplateFiller {
     }
 
     private fun substituteArguments(arguments: List<String>): String {
-        return arguments.joinToString(", ") {
-            "\"${it.replace("\"", "\\\"")}\""
-        }
+        return arguments.joinToString(", ") { quote(it) }
     }
+
+    private fun quote(it: String) = "\"${it.replace("\"", "\\\"")}\""
 }

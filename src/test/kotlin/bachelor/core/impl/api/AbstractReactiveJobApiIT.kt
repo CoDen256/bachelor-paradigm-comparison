@@ -524,7 +524,7 @@ abstract class AbstractReactiveJobApiIT(
         exitCode: Int = 0,
         fail: Boolean = false
     ): JobReference {
-        val job = create(resolver.resolveSpec(jobSpecProvider.getTemplate(), executionTime, ttl, exitCode, fail)).block()!!
+        val job = create(resolveSpec( executionTime, ttl, exitCode, fail)).block()!!
         awaitUntilJobCreated(job)
         return job
     }

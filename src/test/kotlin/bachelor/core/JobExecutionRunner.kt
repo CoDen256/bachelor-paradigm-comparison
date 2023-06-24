@@ -30,7 +30,7 @@ class JobExecutionRunner {
         api.startListeners()
 
         val executor = ReactiveJobExecutor(api)
-        val request = ImageRunRequest.from("test-rscript", "main.R", listOf("1", "2", "3"), "latest")
+        val request = ImageRunRequest("test-job", "executor-test", "test-rscript:latest", arguments =  listOf("main.R", "1", "2", "3"))
         val runningTimeout = Duration.ofSeconds(50)
         val terminatedTimeout = Duration.ofSeconds(50)
         KubernetesBasedImageRunner(executor, templateLoader, templateFiller)

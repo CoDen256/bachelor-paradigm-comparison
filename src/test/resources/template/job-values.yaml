@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: default
+  name: test-script-job
+spec:
+  ttlSecondsAfterFinished: 20
+  activeDeadlineSeconds: 2000
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - name: main
+          image: docker.optimax.cloud/kubernetes/test-script:1.0
+          command: [ "python" ]
+          args: [ "script.py", "1", "10-10-2000 10:00:00", " hustensaft " ]
+      restartPolicy: Never

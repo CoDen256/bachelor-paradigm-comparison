@@ -5,12 +5,13 @@ metadata:
   name: ${NAME}
 spec:
   ttlSecondsAfterFinished: ${TTL}
+  activeDeadlineSeconds: ${ACTIVE_DEADLINE}
   backoffLimit: 0
   template:
     spec:
       containers:
         - name: main
-          image: busybox${FAIL}:latest
-          command: [ "/bin/sh" ]
-          args: [ "-c", "echo start && sleep ${SLEEP} && echo slept ${SLEEP} && echo end && exit ${CODE}" ]
+          image: ${IMAGE_NAME}
+          command: [ ${COMMAND} ]
+          args: [ ${ARGUMENTS} ]
       restartPolicy: Never
