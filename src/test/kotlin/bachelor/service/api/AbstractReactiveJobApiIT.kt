@@ -12,6 +12,10 @@ import bachelor.service.config.fabric8.reference
 import bachelor.service.config.utils.BaseJobTemplateFiller
 import bachelor.service.config.utils.JobTemplateFileLoader
 import com.google.common.truth.Truth.assertThat
+import io.fabric8.kubernetes.api.model.NamespaceBuilder
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder
+import io.fabric8.kubernetes.api.model.Pod
+import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
@@ -24,28 +28,31 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> ReactiveJobApi) {
-    private val helperClient = KubernetesClientBuilder().build()
+const val NAMESPACE = "client-test"
+
+const val JOB_CREATED_TIMEOUT = 5L
+const val JOB_DELETED_TIMEOUT = 5L
+const val JOB_DONE_TIMEOUT = 20L
+
+const val POD_CREATED_TIMEOUT = 5L
+const val POD_READY_TIMEOUT = 5L
+const val POD_TERMINATED_TIMEOUT = 10L
+const val POD_DELETED_TIMEOUT = 10L
+
+abstract class AbstractReactiveJobApiIT(
+    private val newJobApi: (String) -> ReactiveJobApi
+) {
+    private val helperClient = createHelperClient()
 
     private val resolver = BaseJobTemplateFiller()
     private val jobSpecFile = "/template/job.yaml"
     private val jobSpecProvider = JobTemplateFileLoader(File(this::class.java.getResource(jobSpecFile)!!.toURI()))
 
-    private val namespace = "client-test"
-    private val JOB_CREATED_TIMEOUT = 5L
-    private val JOB_DELETED_TIMEOUT = 5L
-    private val JOB_DONE_TIMEOUT = 20L
-
-    private val POD_CREATED_TIMEOUT = 5L
-    private val POD_READY_TIMEOUT = 5L
-    private val POD_TERMINATED_TIMEOUT = 10L
-    private val POD_DELETED_TIMEOUT = 10L
-
     private lateinit var api: ReactiveJobApi
 
     @BeforeEach
     fun setup() {
-        api = newJobApi(namespace)
+        api = newJobApi(NAMESPACE)
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.startListeners()
     }
@@ -55,9 +62,8 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.deleteAllJobsAndAwaitNoJobsPresent()
         awaitNoPodsPresent()
         api.close()
-        api.jobEvents().collectList().block()?.forEach { println(it) }
-        println("--------")
-        api.podEvents().collectList().block()?.forEach { println(it) }
+        api.collectJobEvents()
+        api.collectPodEvents()
     }
 
     @Test
@@ -85,7 +91,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         awaitUntilPodReady(job)
 
-        val logs = api.getLogs(pod).block()!!
+        val logs = api.collectLogs(pod)
         assertContains(logs, "start\n")
     }
 
@@ -96,9 +102,10 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         awaitUntilPodTerminated(job)
 
-        val logs = api.getLogs(pod).block()!!
+        val logs = api.collectLogs(pod)
         assertEquals(logs, "start\nslept 0\nend\n")
     }
+
 
     @Test
     fun eventsListenerStartedTwice() {
@@ -112,14 +119,14 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
             )
         )
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
@@ -139,7 +146,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -147,7 +154,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
                 del(1, 0, null, null),
             )
         )
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
@@ -170,7 +177,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -178,7 +185,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
                 del(1, 0, null, null),
             )
         )
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -201,7 +208,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -209,7 +216,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
                 del(1, 0, null, null),
             )
         )
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -234,7 +241,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -244,7 +251,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
 
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -270,7 +277,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsAtLeastElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -279,7 +286,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
 
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -303,7 +310,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -316,7 +323,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
                 del(null, 0, null, 1, listOf("Complete")),
             )
         )
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -342,7 +349,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -358,7 +365,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
                 del(null, 0, null, 1, listOf("Complete")),
             )
         )
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -387,7 +394,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -401,7 +408,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
 
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -427,7 +434,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -444,7 +451,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
 
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -474,7 +481,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         api.stopListeners() // emits complete
 
         // verify
-        val events = getJobEvents()
+        val events = api.collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -482,7 +489,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
 
-        val podEvents = getPodEvents()
+        val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
@@ -497,91 +504,74 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
     }
 
-    private fun getPodEvents(): MutableList<ResourceEvent<ActivePodSnapshot>> =
-        api.podEvents().collectList().block()!!.onEach { println(it) }
-
-    private fun getJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
-        api.jobEvents().collectList().block()!!.onEach { println(it) }
-
     private fun ResourceEvent<ActivePodSnapshot>.getWaitingMessage(): String {
         val state = element?.mainContainerState
-        if (state is WaitingState) {
-            return state.message
-        }
-        return ""
+        if (state !is WaitingState) return ""
+        return state.message
     }
 
     private fun ResourceEvent<ActivePodSnapshot>.getRunningStartedAt(): String {
         val state = element?.mainContainerState
-        if (state is RunningState) {
-            return state.startedAt
-        }
-        return ""
+        if (state !is RunningState) return ""
+        return state.startedAt
     }
 
-    private fun awaitUntilJobDoesNotExist(job: JobReference, timeout: Duration = Duration.ofSeconds(JOB_DONE_TIMEOUT)) {
-        Awaitility.await()
-            .atMost(timeout)
-            .until { !jobExists(job) }
-    }
-
-
-    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(
-        executionTime: Long,
-        ttl: Long,
-        exitCode: Int = 0,
-        fail: Boolean = false
-    ): JobReference {
+    // REACTIVE JOB API EXTENSION HELPER METHODS
+    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): JobReference {
         val job = create(resolveSpec(executionTime, ttl, exitCode, fail)).block()!!
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(JOB_CREATED_TIMEOUT))
-            .until { jobExists(job) }
+        awaitUntilJobCreated(job)
         return job
     }
 
-    private fun awaitUntilPodCreated(job: JobReference): PodReference {
-        val pod = AtomicReference<PodReference>()
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(POD_CREATED_TIMEOUT))
-            .until { findPod(job)?.let { pod.set(it) } != null }
-        return pod.get()
-    }
+    private fun ReactiveJobApi.collectLogs(pod: PodReference) = getLogs(pod).block()!!
 
-    private fun awaitUntilPodReady(job: JobReference) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(POD_READY_TIMEOUT))
-            .until { podIsReady(findPod(job)!!) }
-    }
-
-    private fun awaitUntilPodTerminated(job: JobReference) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(POD_TERMINATED_TIMEOUT))
-            .until { podIsTerminated(findPod(job)!!) }
-    }
-
-    private fun podIsTerminated(ref: PodReference): Boolean {
-        val pod = helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
-        return pod.status.containerStatuses[0].state.terminated != null
-    }
-
-    private fun podIsReady(ref: PodReference): Boolean {
-        val pod = helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
-        return pod.status.containerStatuses[0].state.let {
-            it.running != null || it.terminated != null
-        }
+    private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent() {
+        getJobs().forEach { deleteAndAwaitUntilJobDeleted(it) }
     }
 
     private fun ReactiveJobApi.deleteAndAwaitUntilJobDeleted(job: JobReference, timeout: Long = JOB_DELETED_TIMEOUT) {
         delete(job)
+        awaitUntilJobDoesNotExist(job, timeout)
+    }
+
+    private fun ReactiveJobApi.collectPodEvents(): MutableList<ResourceEvent<ActivePodSnapshot>> =
+        podEvents().collectList().block()!!.onEach { println(it) }
+
+    private fun ReactiveJobApi.collectJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
+        jobEvents().collectList().block()!!.onEach { println(it) }
+
+
+    // AWAITILITY HELPER METHODS
+    private fun awaitUntilJobCreated(job: JobReference, timeout: Long = JOB_CREATED_TIMEOUT) {
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(timeout))
+            .until { jobExists(job) }
+    }
+
+    private fun awaitUntilJobDoesNotExist(job: JobReference, timeout: Long = JOB_DONE_TIMEOUT) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(timeout))
             .until { !jobExists(job) }
     }
 
-    private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent() {
-        getJobs().forEach {
-            deleteAndAwaitUntilJobDeleted(it)
-        }
+    private fun awaitUntilPodCreated(job: JobReference, timeout: Long = POD_CREATED_TIMEOUT): PodReference {
+        val pod = AtomicReference<PodReference>()
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(timeout))
+            .until { findPod(job)?.let { pod.set(it) } != null }
+        return pod.get()
+    }
+
+    private fun awaitUntilPodReady(job: JobReference, timeout: Long = POD_READY_TIMEOUT) {
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(timeout))
+            .until { podIsReady(findPod(job)!!) }
+    }
+
+    private fun awaitUntilPodTerminated(job: JobReference, timeout: Long = POD_TERMINATED_TIMEOUT) {
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(timeout))
+            .until { podIsTerminated(findPod(job)!!) }
     }
 
     private fun awaitNoPodsPresent(timeout: Long = POD_DELETED_TIMEOUT) {
@@ -590,30 +580,14 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             .until { getPods().isEmpty() }
     }
 
-
-    private fun jobExists(job: JobReference) = getJobs().any { (name, uid) ->
-        name == TARGET_JOB && name == job.name && uid == job.uid
-    }
-
-    private fun getJobs(): List<JobReference> {
-        return helperClient.batch().v1().jobs().inNamespace(namespace)
-            .list()
-            .items
-            .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
-    }
+    //  JOB AND POD REFERENCES HELPER METHODS
+    private fun jobExists(job: JobReference) = getJobs().contains(job)
 
     private fun findPod(job: JobReference): PodReference? {
         return getPods().find { it.jobId == job.uid }
     }
 
-
-    private fun getPods(): List<PodReference> {
-        return helperClient.pods().inNamespace(namespace)
-            .list()
-            .items
-            .map { it.reference() }
-    }
-
+    // GENERAL HELPER METHODS
     private fun resolveSpec(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): String {
         return resolver.fill(
             jobSpecProvider.getTemplate(), mapOf(
@@ -628,5 +602,58 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
     private fun Boolean.toInt(): Int {
         return if (this) 1 else 0
+    }
+
+    // HELPER KUBERNETES CLIENT TO VERIFY ACTUAL STATE ON THE KUBERNETES CLUSTER
+    private fun createHelperClient(): KubernetesClient {
+        return KubernetesClientBuilder().build().apply {
+            createNamespace()
+        }
+    }
+
+    private fun getJobs(): List<JobReference> {
+        return helperClient.batch()
+            .v1()
+            .jobs()
+            .inNamespace(NAMESPACE)
+            .list()
+            .items
+            .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
+    }
+
+
+    private fun getPods(): List<PodReference> {
+        return helperClient
+            .pods()
+            .inNamespace(NAMESPACE)
+            .list()
+            .items
+            .map { it.reference() }
+    }
+
+
+    private fun podIsTerminated(ref: PodReference): Boolean {
+        val pod = getPod(ref)
+        return pod.status.containerStatuses[0].state.terminated != null
+    }
+
+    private fun podIsReady(ref: PodReference): Boolean {
+        val pod = getPod(ref)
+        return pod.status.containerStatuses[0].state.let {
+            it.running != null || it.terminated != null
+        }
+    }
+
+    private fun getPod(ref: PodReference): Pod =
+        helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
+
+    private fun KubernetesClient.createNamespace() {
+        val namespace = NamespaceBuilder()
+            .withMetadata(
+                ObjectMetaBuilder()
+                    .withName(NAMESPACE)
+                    .build()
+            ).build()
+        resource(namespace).createOrReplace()
     }
 }
