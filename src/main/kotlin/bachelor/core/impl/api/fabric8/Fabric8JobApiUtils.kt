@@ -1,7 +1,7 @@
 package bachelor.core.impl.api.fabric8
 
-import bachelor.executor.reactive.Action
 import bachelor.core.api.snapshot.*
+import bachelor.executor.reactive.Action
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.ContainerState as KubernetesContainerState
@@ -46,8 +46,13 @@ fun getJobStatus(job: Job): JobStatus {
 fun mapJobCondition(it: KubernetesJobCondition): JobCondition =
     JobCondition(it.status ?: "", it.message ?: "", it.type ?: "", it.reason ?: "")
 
-fun getPhase(pod: Pod): String = pod.status?.phase ?: "UnknownPhase"
-
+fun getPhase(pod: Pod): Phase = when(pod.status?.phase){
+    "Pending" -> Phase.PENDING
+    "Running" -> Phase.RUNNING
+    "Succeeded" -> Phase.SUCCEEDED
+    "Failed" -> Phase.FAILED
+    else -> Phase.UNKNOWN
+}
 fun getMainContainerState(pod: Pod): ContainerState {
     return getKubernetesMainContainerState(pod)?.let { mapContainerState(it) } ?: UnknownState
 }

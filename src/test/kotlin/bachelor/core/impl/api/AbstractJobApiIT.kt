@@ -1,16 +1,12 @@
 package bachelor.core.impl.api
 
-import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.JobApi
-import bachelor.core.api.snapshot.JobReference
-import bachelor.core.api.snapshot.PodReference
-import bachelor.core.api.snapshot.ActiveJobSnapshot
-import bachelor.core.api.snapshot.ActivePodSnapshot
-import bachelor.core.api.snapshot.RunningState
-import bachelor.core.api.snapshot.WaitingState
+import bachelor.core.api.snapshot.*
+import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.impl.api.fabric8.reference
 import bachelor.core.impl.template.*
 import bachelor.core.utils.*
+import bachelor.executor.reactive.ResourceEvent
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.api.model.NamespaceBuilder
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder
@@ -119,9 +115,9 @@ abstract class AbstractJobApiIT(
         val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = name),
-                upd("Pending", name = name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = name),
+                add(PENDING, name = name),
+                upd(PENDING, name = name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
             )
         )
     }
@@ -147,11 +143,11 @@ abstract class AbstractJobApiIT(
         val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = name),
-                upd("Pending", name = name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = name),
+                add(PENDING, name = name),
+                upd(PENDING, name = name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
             )
         )
     }
@@ -177,11 +173,11 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
             )
         )
     }
@@ -208,12 +204,12 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Running", containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd("Running", containerStateRunning(podEvents[4].getRunningStartedAt()), name = pod.name),
-                upd("Running", containerStateRunning(podEvents[5].getRunningStartedAt()), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[4].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[5].getRunningStartedAt()), name = pod.name),
             )
         )
     }
@@ -243,13 +239,13 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Running", containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd("Running", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Running", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Running", containerStateTerminated(0, "Completed"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -278,12 +274,12 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -315,14 +311,14 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
-                del("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                del(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -357,17 +353,17 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
 
-                upd("Running", containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
 
-                upd("Running", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
-                upd("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
-                del("Succeeded", containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                del(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -400,14 +396,14 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateTerminated(3, "Error"), name = pod.name),
-                upd("Failed", containerStateTerminated(3, "Error"), name = pod.name),
-                upd("Failed", containerStateTerminated(3, "Error"), name = pod.name),
-                upd("Failed", containerStateTerminated(3, "Error"), name = pod.name),
-                del("Failed", containerStateTerminated(3, "Error"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                del(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
             )
         )
     }
@@ -443,17 +439,17 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
 
-                upd("Running", containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd("Running", containerStateTerminated(3, "Error"), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateTerminated(3, "Error"), name = pod.name),
 
-                upd("Failed", containerStateTerminated(3, "Error"), name = pod.name),
-                upd("Failed", containerStateTerminated(3, "Error"), name = pod.name),
-                upd("Failed", containerStateTerminated(3, "Error"), name = pod.name),
-                del("Failed", containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                del(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
             )
         )
     }
@@ -481,14 +477,10 @@ abstract class AbstractJobApiIT(
         val podEvents = api.collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
-                add("Pending", name = pod.name),
-                upd("Pending", name = pod.name),
-                upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(
-                    "Pending",
-                    containerStateWaiting("ErrImagePull", podEvents[3].getWaitingMessage()),
-                    name = pod.name
-                ),
+                add(PENDING, name = pod.name),
+                upd(PENDING, name = pod.name),
+                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, containerStateWaiting("ErrImagePull", podEvents[3].getWaitingMessage()), name = pod.name),
             )
         )
     }
@@ -506,7 +498,12 @@ abstract class AbstractJobApiIT(
     }
 
     // REACTIVE JOB API EXTENSION HELPER METHODS
-    private fun JobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): JobReference {
+    private fun JobApi.createAndAwaitUntilJobCreated(
+        executionTime: Long,
+        ttl: Long,
+        exitCode: Int = 0,
+        fail: Boolean = false
+    ): JobReference {
         val job = create(resolveSpec(executionTime, ttl, exitCode, fail))
         awaitUntilJobCreated(job)
         return job

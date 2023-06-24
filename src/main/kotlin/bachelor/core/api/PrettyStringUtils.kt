@@ -24,7 +24,7 @@ fun prettyString(s: ContainerState): String {
 fun prettyString(s: ActivePodSnapshot): String {
     return "Last operation: ${s.lastAction.lowercase()}\n" +
             "Name: ${s.name}\n" +
-            "Phase: ${s.phase.uppercase()}\n" +
+            "Phase: ${s.phase.name.uppercase()}\n" +
             "State: ${prettyString(s.mainContainerState)}"
 }
 

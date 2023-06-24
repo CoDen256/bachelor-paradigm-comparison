@@ -1,5 +1,6 @@
 package bachelor.core.utils
 
+import bachelor.core.api.snapshot.Phase.*
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
@@ -10,18 +11,18 @@ class TimelineParserTest {
         val podEvents =
             "|A(P/U)-|U(P/U)-|U(P/W)-|U(R/R)-|-------|U(R/T0)-|-------|U(S/T-2)|-------|-------|U(S/T0)|D(S/T0)|"
         val expected = listOf(
-            add("Pending"),
-            upd("Pending"),
-            upd("Pending", containerStateWaiting()),
-            upd("Running", containerStateRunning()),
+            add(PENDING),
+            upd(PENDING),
+            upd(PENDING, containerStateWaiting()),
+            upd(RUNNING, containerStateRunning()),
             noop(),
-            upd("Running", containerStateTerminated(0)),
+            upd(RUNNING, containerStateTerminated(0)),
             noop(),
-            upd("Succeeded", containerStateTerminated(-2)),
+            upd(SUCCEEDED, containerStateTerminated(-2)),
             noop(),
             noop(),
-            upd("Succeeded", containerStateTerminated(0)),
-            del("Succeeded", containerStateTerminated(0))
+            upd(SUCCEEDED, containerStateTerminated(0)),
+            del(SUCCEEDED, containerStateTerminated(0))
         )
 
         val result = parsePodEvents(podEvents)

@@ -119,7 +119,7 @@ data class ActivePodSnapshot(
     val namespace: String,
     val controllerUid: String,
     val mainContainerState: ContainerState,
-    val phase: String,
+    val phase: Phase,
     val lastAction: String = "NOOP"
 ) : PodSnapshot {
 
@@ -151,6 +151,14 @@ data class ActivePodSnapshot(
         return PodReference(name, uid, namespace, controllerUid)
     }
 
+}
+
+enum class Phase{
+    PENDING,
+    RUNNING,
+    FAILED,
+    SUCCEEDED,
+    UNKNOWN
 }
 
 sealed interface ContainerState

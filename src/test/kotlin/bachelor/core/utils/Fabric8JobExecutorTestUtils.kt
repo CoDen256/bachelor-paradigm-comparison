@@ -16,13 +16,13 @@ const val TARGET_POD = "target-pod" // fake pod id
 // EVENTS
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)
 
-fun add(phase: String, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
+fun add(phase: Phase, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.ADD, newPod(Action.ADD, name, phase, TARGET_JOB, targetState))
 
-fun upd(phase: String, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
+fun upd(phase: Phase, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.UPDATE, newPod(Action.UPDATE, name, phase, TARGET_JOB, targetState))
 
-fun del(phase: String, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
+fun del(phase: Phase, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.DELETE, newPod(Action.DELETE, name, phase, TARGET_JOB, targetState))
 
 fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
@@ -93,34 +93,34 @@ fun unknownSnapshot(name: String = TARGET_POD, job: String = TARGET_JOB): Active
 
 // POD
 fun failedPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 1): ActivePodSnapshot {
-    return newPod(name, "Failed", job, containerStateTerminated(code))
+    return newPod(name, Phase.FAILED, job, containerStateTerminated(code))
 }
 
 fun successfulPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 0): ActivePodSnapshot {
-    return newPod(name, "Success", job, containerStateTerminated(code))
+    return newPod(name, Phase.SUCCEEDED, job, containerStateTerminated(code))
 }
 
 fun runningPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return newPod(name, "Running", job, containerStateRunning())
+    return newPod(name, Phase.RUNNING, job, containerStateRunning())
 }
 
 fun waitingPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return newPod(name, "Pending", job, containerStateWaiting())
+    return newPod(name, Phase.PENDING, job, containerStateWaiting())
 }
 
 fun unknownPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return newPod(name, "Pending", job, UnknownState)
+    return newPod(name, Phase.PENDING, job, UnknownState)
 }
 
 fun containerStateWaiting(reason: String = "", message: String = "") = WaitingState(reason, message)
 fun containerStateRunning(startedAt: String = "0000") =  RunningState(startedAt)
 fun containerStateTerminated(code: Int, reason: String = "", message: String = "") = TerminatedState(reason, message, code)
 
-fun newPod(name: String, phase: String, job: String, state: ContainerState = UnknownState): ActivePodSnapshot{
+fun newPod(name: String, phase: Phase, job: String, state: ContainerState = UnknownState): ActivePodSnapshot{
     return newPod(Action.NOOP, name, phase, job, state)
 }
 
-fun newPod(action: Action, name: String, phase: String, job: String, state: ContainerState = UnknownState): ActivePodSnapshot {
+fun newPod(action: Action, name: String, phase: Phase, job: String, state: ContainerState = UnknownState): ActivePodSnapshot {
     return ActivePodSnapshot(name, name, "", job, state, phase, action.name)
 }
 
@@ -211,10 +211,11 @@ private fun parseJob(snapshot: String, action: Action): ActiveJobSnapshot {
 private fun parsePod(snapshot: String, action: Action): ActivePodSnapshot {
     val split = snapshot.split("/")
     val phase = when(val phaseString = split[0]){
-        "P" -> "Pending"
-        "R" -> "Running"
-        "S" -> "Succeeded"
-        "F" -> "Failed"
+        "P" -> Phase.PENDING
+        "R" -> Phase.RUNNING
+        "S" -> Phase.SUCCEEDED
+        "F" -> Phase.FAILED
+        "U" -> Phase.UNKNOWN
         else -> throw IllegalArgumentException("Unknown Phase for $phaseString")
     }
     val containerStateString = split[1]
