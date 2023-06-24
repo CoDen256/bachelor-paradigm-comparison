@@ -1,12 +1,14 @@
 package bachelor.executor.reactive
 
+import bachelor.cachedEmitter
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
-import bachelor.core.impl.api.fabric8.snapshot
 import bachelor.core.impl.template.*
 import bachelor.core.utils.*
+import bachelor.core.utils.generate.*
 import bachelor.executor.reactive.Action.*
+import bachelor.millis
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -172,19 +174,19 @@ class ReactiveJobExecutorCombineTest {
         val expectedJob = inactiveJob()
         val expectedPod = waitingPod()
         val jobStream: Flux<ActiveJobSnapshot> = cachedEmitter {
-            emit(inactiveJobSnapshot("wrongJob"))
-            emit(millis(100), inactiveJobSnapshot("wrongJob"))
-            emit(millis(100), inactiveJobSnapshot("wrongJob"))
+            emit(inactiveJob("wrongJob"))
+            emit(millis(100), inactiveJob("wrongJob"))
+            emit(millis(100), inactiveJob("wrongJob"))
             emit(millis(100), expectedJob) // actual job
-            emit(millis(100), inactiveJobSnapshot("wrongJob"))
+            emit(millis(100), inactiveJob("wrongJob"))
             completeOnLast()
         }
         val podStream: Flux<ActivePodSnapshot> = cachedEmitter {
-            emit(unknownSnapshot("wrongPod", "wrongJob"))
-            emit(millis(100), waitingSnapshot("wrongPod", "wrongJob"))
-            emit(millis(100), runningSnapshot("wrongPod", "wrongJob"))
+            emit(unknownPod("wrongPod", "wrongJob"))
+            emit(millis(100), waitingPod("wrongPod", "wrongJob"))
+            emit(millis(100), runningPod("wrongPod", "wrongJob"))
             emit(millis(200), expectedPod) // actual pod
-            emit(millis(100), failedSnapshot("wrongPod", "wrongJob"))
+            emit(millis(100), failedPod("wrongPod", "wrongJob"))
             completeOnLast()
         }
 
@@ -216,34 +218,34 @@ class ReactiveJobExecutorCombineTest {
     @Test
     fun complexEventGeneration() {
         // SETUP
-        val inactiveJob = inactiveJobSnapshot()
-        val activeJob = activeJobSnapshot()
-        val runningJob1 = runningJobSnapshot()
-        val runningJob2 = runningJobSnapshot()
-        val terminatedJob = succeededJobSnapshot()
+        val inactiveJob = inactiveJob()
+        val activeJob = activeJob()
+        val runningJob1 = runningJob()
+        val runningJob2 = runningJob()
+        val terminatedJob = succeededJob()
 
-        val waitingPod = waitingSnapshot()
-        val runningPod = runningSnapshot()
-        val terminatedPod = successfulSnapshot()
+        val waitingPod = waitingPod()
+        val runningPod = runningPod()
+        val terminatedPod = successfulPod()
 
         val interval = millis(200)
         val podDelay = millis(100)
 
         val jobStream: Flux<ActiveJobSnapshot> = cachedEmitter {
-            emit(runningJobSnapshot("wrongJob"))
-            emit(interval, inactiveJob, runningJobSnapshot("wrongJob"))
-            emit(interval, activeJob, succeededJobSnapshot("wrongJob"))
+            emit(runningJob("wrongJob"))
+            emit(interval, inactiveJob, runningJob("wrongJob"))
+            emit(interval, activeJob, succeededJob("wrongJob"))
             emit(interval, runningJob1)
-            emit(interval, runningJob2, activeJobSnapshot("wrongJob"))
+            emit(interval, runningJob2, activeJob("wrongJob"))
             emit(interval, terminatedJob)
             completeOnLast()
         }
         val podStream: Flux<ActivePodSnapshot> = cachedEmitter {
-            emit(podDelay, runningSnapshot("wrongPod", "wrongJob"))
-            emit(interval, runningSnapshot("wrongPod", "wrongJob"))
-            emit(interval, waitingPod, successfulSnapshot("wrongPod", "wrongJob"))
+            emit(podDelay, runningPod("wrongPod", "wrongJob"))
+            emit(interval, runningPod("wrongPod", "wrongJob"))
+            emit(interval, waitingPod, successfulPod("wrongPod", "wrongJob"))
             emit(interval, runningPod)
-            emit(interval, terminatedPod, waitingSnapshot("wrongPod", "wrongJob"))
+            emit(interval, terminatedPod, waitingPod("wrongPod", "wrongJob"))
             completeOnLast()
         }
 

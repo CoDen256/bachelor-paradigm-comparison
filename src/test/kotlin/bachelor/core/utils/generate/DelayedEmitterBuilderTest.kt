@@ -1,6 +1,5 @@
-package bachelor.core.utils
+package bachelor.core.utils.generate
 
-import bachelor.core.utils.generate.DelayedEmitterBuilder
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Timed

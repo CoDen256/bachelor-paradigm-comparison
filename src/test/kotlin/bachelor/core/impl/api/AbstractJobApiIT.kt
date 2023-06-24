@@ -6,6 +6,7 @@ import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.impl.api.fabric8.reference
 import bachelor.core.impl.template.*
 import bachelor.core.utils.*
+import bachelor.core.utils.generate.*
 import bachelor.executor.reactive.ResourceEvent
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.api.model.NamespaceBuilder

@@ -1,4 +1,4 @@
-package bachelor.core.utils
+package bachelor.core.utils.generate
 
 import bachelor.core.api.snapshot.Phase.*
 import com.google.common.truth.Truth.assertThat

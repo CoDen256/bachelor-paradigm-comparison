@@ -7,6 +7,7 @@ import bachelor.core.impl.api.fabric8.reference
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.core.utils.*
+import bachelor.core.utils.generate.*
 import bachelor.executor.reactive.ResourceEvent
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.api.model.NamespaceBuilder
@@ -221,9 +222,9 @@ abstract class AbstractReactiveJobApiIT(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
                 upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(Phase.RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd(Phase.RUNNING, containerStateRunning(podEvents[4].getRunningStartedAt()), name = pod.name),
-                upd(Phase.RUNNING, containerStateRunning(podEvents[5].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[4].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[5].getRunningStartedAt()), name = pod.name),
             )
         )
     }
@@ -256,10 +257,10 @@ abstract class AbstractReactiveJobApiIT(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
                 upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(Phase.RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd(Phase.RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -329,10 +330,10 @@ abstract class AbstractReactiveJobApiIT(
                 upd(PENDING, name = pod.name),
                 upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
                 upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                del(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                del(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -371,13 +372,13 @@ abstract class AbstractReactiveJobApiIT(
                 upd(PENDING, name = pod.name),
                 upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
 
-                upd(Phase.RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
 
-                upd(Phase.RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                del(Phase.SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                del(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -414,10 +415,10 @@ abstract class AbstractReactiveJobApiIT(
                 upd(PENDING, name = pod.name),
                 upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
                 upd(PENDING, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                del(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                del(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
             )
         )
     }
@@ -457,13 +458,13 @@ abstract class AbstractReactiveJobApiIT(
                 upd(PENDING, name = pod.name),
                 upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
 
-                upd(Phase.RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd(Phase.RUNNING, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, containerStateTerminated(3, "Error"), name = pod.name),
 
-                upd(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                del(Phase.FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                del(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
             )
         )
     }

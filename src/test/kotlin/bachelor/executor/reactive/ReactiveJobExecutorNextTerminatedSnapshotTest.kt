@@ -1,16 +1,18 @@
 package bachelor.executor.reactive
 
+import bachelor.cachedEmitter
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.ExecutionSnapshot
 import bachelor.core.api.snapshot.InitialJobSnapshot
 import bachelor.core.api.snapshot.InitialPodSnapshot
 import bachelor.core.api.snapshot.Logs
 import bachelor.core.executor.*
-import bachelor.core.impl.api.fabric8.reference
-import bachelor.core.impl.api.fabric8.snapshot
 import bachelor.core.impl.template.*
 import bachelor.core.utils.*
+import bachelor.core.utils.generate.*
 import bachelor.executor.reactive.Action.*
+import bachelor.millis
+import bachelor.verifyError
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -118,8 +120,8 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
             emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
@@ -140,8 +142,8 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
             emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
@@ -162,9 +164,9 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod(code = 0)
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot(code = 1)))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod(code = 1)))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
         // All the emitted values are cached and emitted before the first subscription, thus
@@ -195,10 +197,10 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod()))
         }
         // We don't want to wait for the next one, and we are accepting first snapshot as the right one
 
@@ -244,7 +246,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = runningPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod()))
         }
 
         // EXERCISE
@@ -265,9 +267,9 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = runningPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
-            emit(millis(600), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
+            emit(millis(600), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod()))
         }
 
         // EXERCISE
@@ -289,7 +291,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod()))
         }
         // it works without problems and cache(1), because stream delivers always the new value, because it caches the last one and
         // the .next call delivers the last one, and its called only after timeout
@@ -313,12 +315,12 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = waitingPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownSnapshot()))
+            emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownPod()))
             emit(
                 millis(300),
                 ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)
             ) // delay of 500ms
-            emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
+            emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod()))
         }
 
         // EXERCISE
@@ -339,9 +341,9 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = runningPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownSnapshot()))
+            emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownPod()))
             emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 500 ms
-            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))//800 ms
+            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulPod()))//800 ms
         }
 
         // EXERCISE
@@ -368,8 +370,8 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = failedPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 300 ms
         }
 
@@ -391,8 +393,8 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = failedPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 300 ms
         }
 
@@ -414,8 +416,8 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingPod()))
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningPod()))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 300 ms
         }
 
