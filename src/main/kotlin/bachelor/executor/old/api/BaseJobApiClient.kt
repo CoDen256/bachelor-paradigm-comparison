@@ -1,4 +1,4 @@
-package bachelor.executor.imperative.api
+package bachelor.executor.old.api
 
 import bachelor.core.api.snapshot.JobReference
 import io.fabric8.kubernetes.api.model.Pod

@@ -4,6 +4,7 @@ import bachelor.executor.reactive.ReactiveJobExecutor
 import bachelor.core.impl.api.fabric8.Fabric8ReactiveJobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
+import bachelor.executor.imperative.ImperativeJobExecutor
 import com.google.gson.reflect.TypeToken
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
@@ -53,42 +54,15 @@ class JobExecutionRunner {
 
     @Test
     fun imperativeJobExecutor() {
-        return
-        val apiClient = ClientBuilder.standard().build()
-//        apiClient.
-
-        val client = Config.defaultClient()
-        // infinite timeout
-        // infinite timeout
-        val httpClient = client.httpClient.newBuilder().readTimeout(0, TimeUnit.SECONDS).build()
-        client.setHttpClient(httpClient)
-        Configuration.setDefaultApiClient(client)
-
-        val api = CoreV1Api()
-
-        val batchApi = BatchV1Api()
-        val res = batchApi.listNamespacedJob("client-test", null, null, null, null, null, null, null, null,
-            null, false)
-
-        val items = res.items // same as fabric8
-        return
-
-        val watch = Watch.createWatch<V1Namespace>(
-            client,
-            api.listNamespaceCall(
-                null, null, null, null, null, 5, null,
-                null, null,
-                Boolean.TRUE, null
-            ),
-            object : TypeToken<Watch.Response<V1Namespace?>?>() {}.type
-        )
-
-        try {
-            for (item in watch) {
-                System.out.printf("%s : %s%n", item.type, item.`object`.metadata!!.name)
-            }
-        } finally {
-            watch.close()
-        }
+//        val executor = ImperativeJobExecutor()
+//        KubernetesBasedImageRunner(executor, templateLoader, templateFiller)
+//            .run(
+//                ImageRunRequest.from("test-rscript", "main.R", listOf("1", "2", "3"),"latest"),
+//                Duration.ofSeconds(50), Duration.ofSeconds(50),
+//            ).doOnEach {
+//                println(it)
+//            }.subscribe {
+//                println(it)
+//            }
     }
 }
