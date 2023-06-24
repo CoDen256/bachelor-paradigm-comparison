@@ -1,7 +1,8 @@
-package bachelor.service.api
+package bachelor.service.api.imperative
 
 import bachelor.kubernetes.utils.*
 import bachelor.reactive.kubernetes.ResourceEvent
+import bachelor.service.api.JobApi
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot.ActiveJobSnapshot
@@ -39,8 +40,8 @@ const val POD_READY_TIMEOUT = 5L
 const val POD_TERMINATED_TIMEOUT = 10L
 const val POD_DELETED_TIMEOUT = 10L
 
-abstract class AbstractReactiveJobApiIT(
-    private val newJobApi: (String) -> ReactiveJobApi
+abstract class AbstractJobApiIT(
+    private val newJobApi: (String) -> JobApi
 ) {
     private val helperClient = createHelperClient()
 
@@ -48,7 +49,7 @@ abstract class AbstractReactiveJobApiIT(
     private val jobSpecFile = "/template/job.yaml"
     private val jobSpecProvider = JobTemplateFileLoader(File(this::class.java.getResource(jobSpecFile)!!.toURI()))
 
-    private lateinit var api: ReactiveJobApi
+    private lateinit var api: JobApi
 
     @BeforeEach
     fun setup() {
@@ -517,28 +518,28 @@ abstract class AbstractReactiveJobApiIT(
     }
 
     // REACTIVE JOB API EXTENSION HELPER METHODS
-    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): JobReference {
-        val job = create(resolveSpec(executionTime, ttl, exitCode, fail)).block()!!
+    private fun JobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): JobReference {
+        val job = create(resolveSpec(executionTime, ttl, exitCode, fail))
         awaitUntilJobCreated(job)
         return job
     }
 
-    private fun ReactiveJobApi.collectLogs(pod: PodReference) = getLogs(pod).block()!!
+    private fun JobApi.collectLogs(pod: PodReference) = getLogs(pod)
 
-    private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent() {
+    private fun JobApi.deleteAllJobsAndAwaitNoJobsPresent() {
         getJobs().forEach { deleteAndAwaitUntilJobDeleted(it) }
     }
 
-    private fun ReactiveJobApi.deleteAndAwaitUntilJobDeleted(job: JobReference, timeout: Long = JOB_DELETED_TIMEOUT) {
+    private fun JobApi.deleteAndAwaitUntilJobDeleted(job: JobReference, timeout: Long = JOB_DELETED_TIMEOUT) {
         delete(job)
         awaitUntilJobDoesNotExist(job, timeout)
     }
 
-    private fun ReactiveJobApi.collectPodEvents(): MutableList<ResourceEvent<ActivePodSnapshot>> =
-        podEvents().collectList().block()!!.onEach { println(it) }
+    private fun JobApi.collectPodEvents(): List<ResourceEvent<ActivePodSnapshot>> =
+        podEvents().onEach { println(it) }
 
-    private fun ReactiveJobApi.collectJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
-        jobEvents().collectList().block()!!.onEach { println(it) }
+    private fun JobApi.collectJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
+        jobEvents().onEach { println(it) }
 
 
     // AWAITILITY HELPER METHODS

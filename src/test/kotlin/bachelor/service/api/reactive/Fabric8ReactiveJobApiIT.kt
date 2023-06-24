@@ -1,4 +1,4 @@
-package bachelor.service.api
+package bachelor.service.api.reactive
 
 import bachelor.service.config.fabric8.Fabric8ReactiveJobApi
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
