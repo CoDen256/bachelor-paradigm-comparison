@@ -1,8 +1,8 @@
 package bachelor.core.impl.api.fabric8
 
+import bachelor.core.api.snapshot.Snapshot
 import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
-import bachelor.core.api.snapshot.Snapshot
 import io.fabric8.kubernetes.api.model.HasMetadata
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler
 import reactor.core.publisher.Sinks
@@ -23,20 +23,24 @@ import reactor.core.publisher.Sinks
  */
 class ReactiveResourceEventHandlerAdapter<O : HasMetadata, S : Snapshot>(
     private val sink: Sinks.Many<ResourceEvent<S>>,
-    private val mapping: (O?) -> S?
+    private val mapping: (O?, Action) -> S?
 ) :
     ResourceEventHandler<O> {
 
     override fun onAdd(obj: O?) {
-        sink.tryEmitNext(ResourceEvent(Action.ADD, mapping(obj)))
+        emitEvent(Action.ADD, obj)
     }
 
     override fun onUpdate(oldObj: O?, newObj: O?) {
-        sink.tryEmitNext(ResourceEvent(Action.UPDATE, mapping(newObj)))
+        emitEvent(Action.UPDATE, newObj)
     }
 
     override fun onDelete(obj: O?, deletedFinalStateUnknown: Boolean) {
-        sink.tryEmitNext(ResourceEvent(Action.DELETE, mapping(obj)))
+        emitEvent(Action.DELETE, obj)
+    }
+
+    private fun emitEvent(action: Action, obj: O?) {
+        sink.tryEmitNext(ResourceEvent(action, mapping(obj, action)))
     }
 }
 

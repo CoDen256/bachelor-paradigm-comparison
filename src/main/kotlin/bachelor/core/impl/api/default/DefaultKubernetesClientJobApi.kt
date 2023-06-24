@@ -83,9 +83,11 @@ class DefaultKubernetesClientJobApi(
         return cachedJobEvents
     }
 
-    private fun mapWatchJobResponse(it: Watch.Response<V1Job>) = resourceEvent(it.type, it.`object`.snapshot())
+    private fun mapWatchJobResponse(response: Watch.Response<V1Job>) =
+        resourceEvent(response.type) { response.`object`.snapshot(it) }
 
-    private fun mapWatchPodResponse(it: Watch.Response<V1Pod>) = resourceEvent(it.type, it.`object`.snapshot())
+    private fun mapWatchPodResponse(response: Watch.Response<V1Pod>) =
+        resourceEvent(response.type) { response.`object`.snapshot(it) }
 
     override fun getLogs(pod: PodReference): String {
         return coreV1Api
@@ -103,14 +105,13 @@ class DefaultKubernetesClientJobApi(
         stopListeners()
     }
 
-    private fun <T : Snapshot> resourceEvent(type: String, obj: T): ResourceEvent<T> {
-        return ResourceEvent(
-            when (type) {
-                "DELETED" -> Action.DELETE
-                "ADDED" -> Action.ADD
-                "MODIFIED" -> Action.UPDATE
-                else -> Action.NOOP
-            }, obj
-        )
+    private fun <T : Snapshot> resourceEvent(type: String, newObj: (Action) -> T): ResourceEvent<T> {
+        val action = when (type) {
+            "DELETED" -> Action.DELETE
+            "ADDED" -> Action.ADD
+            "MODIFIED" -> Action.UPDATE
+            else -> Action.NOOP
+        }
+        return ResourceEvent(action, newObj(action))
     }
 }

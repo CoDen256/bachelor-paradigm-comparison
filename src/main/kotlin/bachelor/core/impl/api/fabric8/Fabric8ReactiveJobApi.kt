@@ -1,13 +1,13 @@
 package bachelor.core.impl.api.fabric8
 
-import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.InvalidJobSpecException
 import bachelor.core.api.JobAlreadyExistsException
 import bachelor.core.api.ReactiveJobApi
-import bachelor.core.api.snapshot.JobReference
-import bachelor.core.api.snapshot.PodReference
 import bachelor.core.api.snapshot.ActiveJobSnapshot
 import bachelor.core.api.snapshot.ActivePodSnapshot
+import bachelor.core.api.snapshot.JobReference
+import bachelor.core.api.snapshot.PodReference
+import bachelor.executor.reactive.ResourceEvent
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.client.KubernetesClient
@@ -98,8 +98,8 @@ class Fabric8ReactiveJobApi(
     private fun informOnPodEvents(sink: Sinks.Many<ResourceEvent<ActivePodSnapshot>>): SharedIndexInformer<Pod> {
         return api.pods()
             .inNamespace(namespace)
-            .inform(ReactiveResourceEventHandlerAdapter(sink) {
-                it?.snapshot()
+            .inform(ReactiveResourceEventHandlerAdapter(sink) { obj, action ->
+                obj?.snapshot(action)
             })
     }
 
@@ -112,8 +112,8 @@ class Fabric8ReactiveJobApi(
             .v1()
             .jobs()
             .inNamespace(namespace)
-            .inform(ReactiveResourceEventHandlerAdapter(sink) {
-                it?.snapshot()
+            .inform(ReactiveResourceEventHandlerAdapter(sink) { obj, action ->
+                obj?.snapshot(action)
             })
     }
 

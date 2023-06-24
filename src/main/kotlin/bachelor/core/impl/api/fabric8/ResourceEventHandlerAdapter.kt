@@ -23,20 +23,25 @@ import reactor.core.publisher.Sinks
  */
 class ResourceEventHandlerAdapter<O : HasMetadata, S : Snapshot>(
     private val events: MutableList<ResourceEvent<S>>,
-    private val mapping: (O?) -> S?
+    private val mapping: (O?, Action) -> S?
 ) :
     ResourceEventHandler<O> {
 
     override fun onAdd(obj: O?) {
-        events.add(ResourceEvent(Action.ADD, mapping(obj)))
+        addEvent(Action.ADD, obj)
     }
 
     override fun onUpdate(oldObj: O?, newObj: O?) {
-        events.add(ResourceEvent(Action.UPDATE, mapping(newObj)))
+        addEvent(Action.UPDATE, newObj)
+
     }
 
     override fun onDelete(obj: O?, deletedFinalStateUnknown: Boolean) {
-        events.add(ResourceEvent(Action.DELETE, mapping(obj)))
+        addEvent(Action.DELETE, obj)
+    }
+
+    private fun addEvent(action: Action, obj: O?) {
+        events.add(ResourceEvent(action, mapping(obj, action)))
     }
 }
 

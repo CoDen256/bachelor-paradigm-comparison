@@ -92,7 +92,7 @@ class Fabric8JobApi(
         return api.pods()
             .inNamespace(namespace)
             .inform(ResourceEventHandlerAdapter(cachedPodEvents) {
-                it?.snapshot()
+                obj, action -> obj?.snapshot(action)
             })
     }
 
@@ -106,7 +106,7 @@ class Fabric8JobApi(
             .jobs()
             .inNamespace(namespace)
             .inform(ResourceEventHandlerAdapter(cachedJobEvents) {
-                it?.snapshot()
+                                                                 obj, action -> obj?.snapshot(action)
             })
     }
 

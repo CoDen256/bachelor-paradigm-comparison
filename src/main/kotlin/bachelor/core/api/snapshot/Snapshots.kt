@@ -40,7 +40,7 @@ data class ActiveJobSnapshot(val name: String,
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ActiveJobSnapshot) return false
-
+        // TODO: uid and namespace are omitted
         if (name != other.name) return false
         if (conditions != other.conditions) return false
         if (lastAction != other.lastAction) return false
@@ -131,6 +131,7 @@ data class ActivePodSnapshot(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ActivePodSnapshot) return false
+        // TODO: uid and namespace are omitted
 
         if (name != other.name) return false
         if (mainContainerState != other.mainContainerState) return false
