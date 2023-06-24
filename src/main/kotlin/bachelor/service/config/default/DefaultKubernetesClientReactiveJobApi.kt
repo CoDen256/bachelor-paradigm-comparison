@@ -1,7 +1,7 @@
 package bachelor.service.config.default
 
-import bachelor.reactive.kubernetes.events.Action
-import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.Action
+import bachelor.reactive.kubernetes.ResourceEvent
 import bachelor.service.api.ReactiveJobApi
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference

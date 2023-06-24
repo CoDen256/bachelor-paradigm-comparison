@@ -1,6 +1,6 @@
 package bachelor.service.config.default
 
-import bachelor.reactive.kubernetes.events.Action
+import bachelor.reactive.kubernetes.Action
 import bachelor.service.api.snapshot.*
 import io.kubernetes.client.openapi.models.V1ContainerState as KubernetesContainerState
 import io.kubernetes.client.openapi.models.V1Job as Job

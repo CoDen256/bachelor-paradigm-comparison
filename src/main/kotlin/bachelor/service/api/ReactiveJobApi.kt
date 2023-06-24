@@ -1,6 +1,6 @@
 package bachelor.service.api
 
-import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.ResourceEvent
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot.ActiveJobSnapshot
@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 
 /**
  * [ReactiveJobApi] is a simplified Kubernetes API client for managing
- * Kubernetes Jobs and observing events
+ * Kubernetes Jobs, Pods and observing events regarding Jobs and Pods within a namespace
  */
 interface ReactiveJobApi : AutoCloseable {
 

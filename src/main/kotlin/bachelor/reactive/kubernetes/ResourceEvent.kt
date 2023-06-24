@@ -1,4 +1,4 @@
-package bachelor.reactive.kubernetes.events
+package bachelor.reactive.kubernetes
 
 import bachelor.service.api.snapshot.Snapshot
 
@@ -9,7 +9,7 @@ import bachelor.service.api.snapshot.Snapshot
  * @property action specifies, what has been done to the element
  * @property element the actual element
  */
-data class ResourceEvent<T : Snapshot>(val action: Action, val element: T?) {
+data class ResourceEvent<out S : Snapshot>(val action: Action, val element: S?) {
 
     override fun toString(): String {
         return "$element[$action]"

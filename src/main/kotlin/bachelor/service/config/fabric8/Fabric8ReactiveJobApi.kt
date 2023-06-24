@@ -1,6 +1,6 @@
 package bachelor.service.config.fabric8
 
-import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.ResourceEvent
 import bachelor.service.api.ReactiveJobApi
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference

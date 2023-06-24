@@ -2,7 +2,7 @@ package bachelor.kubernetes.executor
 
 import bachelor.kubernetes.utils.*
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.reactive.kubernetes.events.Action.*
+import bachelor.reactive.kubernetes.Action.*
 import bachelor.service.api.ReactiveJobApi
 import bachelor.service.api.snapshot.ExecutionSnapshot
 import bachelor.service.api.snapshot.InitialJobSnapshot

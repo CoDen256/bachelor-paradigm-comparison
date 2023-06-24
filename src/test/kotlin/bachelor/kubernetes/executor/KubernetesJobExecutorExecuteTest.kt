@@ -1,8 +1,8 @@
 package bachelor.kubernetes.executor
 
 import bachelor.reactive.kubernetes.ReactiveJobExecutor
-import bachelor.reactive.kubernetes.events.Action.*
-import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.Action.*
+import bachelor.reactive.kubernetes.ResourceEvent
 import bachelor.service.config.fabric8.snapshot
 import bachelor.service.executor.*
 import io.fabric8.kubernetes.api.model.*

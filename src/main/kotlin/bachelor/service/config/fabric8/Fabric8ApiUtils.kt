@@ -1,6 +1,6 @@
 package bachelor.service.config.fabric8
 
-import bachelor.reactive.kubernetes.events.Action
+import bachelor.reactive.kubernetes.Action
 import bachelor.service.api.snapshot.*
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job

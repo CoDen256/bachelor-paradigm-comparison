@@ -1,8 +1,8 @@
 package bachelor.kubernetes.utils
 
 
-import bachelor.reactive.kubernetes.events.Action
-import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.Action
+import bachelor.reactive.kubernetes.ResourceEvent
 import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.Snapshot

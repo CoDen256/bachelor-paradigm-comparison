@@ -1,7 +1,7 @@
 package bachelor.service.api
 
 import bachelor.kubernetes.utils.*
-import bachelor.reactive.kubernetes.events.ResourceEvent
+import bachelor.reactive.kubernetes.ResourceEvent
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
 import bachelor.service.api.snapshot.ActiveJobSnapshot
