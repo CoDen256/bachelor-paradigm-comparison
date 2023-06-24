@@ -16,7 +16,8 @@ fun Job.snapshot(lastAction: Action = Action.NOOP) =
         metadata?.uid ?: "[Job uid unavailable]",
         metadata?.namespace ?: "[Pod namespace unavailable]",
         getJobConditions(this),
-        getJobStatus(this)
+        getJobStatus(this),
+        lastAction.name
     )
 
 fun Pod.reference() = snapshot().reference()
@@ -28,7 +29,8 @@ fun Pod.snapshot(lastAction: Action = Action.NOOP) =
         metadata?.namespace ?: "[Pod namespace unavailable]",
         metadata?.labels?.get("controller-uid") ?: "[Pod namespace unavailable]",
         getMainContainerState(this),
-        getPhase(this)
+        getPhase(this),
+        lastAction.name
     )
 
 

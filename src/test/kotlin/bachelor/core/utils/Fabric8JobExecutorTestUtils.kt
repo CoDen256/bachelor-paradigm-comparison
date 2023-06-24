@@ -23,22 +23,22 @@ const val TARGET_POD = "target-pod" // fake pod id
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)
 
 fun add(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.ADD, newPod(name, phase, TARGET_JOB, targetState))
+    ResourceEvent(Action.ADD, newPod(Action.ADD, name, phase, TARGET_JOB, targetState))
 
 fun upd(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.UPDATE, newPod(name, phase, TARGET_JOB, targetState))
+    ResourceEvent(Action.UPDATE, newPod(Action.UPDATE, name, phase, TARGET_JOB, targetState))
 
 fun del(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.DELETE, newPod(name, phase, TARGET_JOB, targetState))
+    ResourceEvent(Action.DELETE, newPod(Action.DELETE, name, phase, TARGET_JOB, targetState))
 
 fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions))
+    ResourceEvent(Action.ADD, newJob(Action.ADD, name, active, ready, failed, succeeded, conditions))
 
 fun upd(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.UPDATE, newJob(name, active, ready, failed, succeeded, conditions))
+    ResourceEvent(Action.UPDATE, newJob(Action.UPDATE, name, active, ready, failed, succeeded, conditions))
 
 fun del(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.DELETE, newJob(name, active, ready, failed, succeeded, conditions))
+    ResourceEvent(Action.DELETE, newJob(Action.DELETE, name, active, ready, failed, succeeded, conditions))
 
 
 
@@ -226,33 +226,32 @@ fun millis(millis: Long): Duration = Duration.ofMillis(millis)
  *  * Phase - (P)ending/(R)unning/((S)ucceeded|(F)ailed)
  *  * MainContainerState - (U)nknown/(W)aiting/(R)unning/(T)erminated(exitcode)
  */
-private fun <T: Snapshot> parseEvent(event: String, element: T): ResourceEvent<T> {
+private fun <T: Snapshot> parseEvent(event: String, snapshot: String, elementParser: (String, Action) -> T): ResourceEvent<T> {
     val type = event[0]
-    return ResourceEvent(
-        when(type){
-            'A' -> Action.ADD
-            'U' -> Action.UPDATE
-            'D' -> Action.DELETE
-            else ->  throw IllegalArgumentException("Cannot parse event: $event")
-        }, element
-    )
+    val action = when (type) {
+        'A' -> Action.ADD
+        'U' -> Action.UPDATE
+        'D' -> Action.DELETE
+        else -> throw IllegalArgumentException("Cannot parse event: $event")
+    }
+    return ResourceEvent(action, elementParser(snapshot, action))
 }
 
 /**
  * Parse job of format {ACTIVE}{READY}{FAILED}{SUCCESS}
  */
-private fun parseJob(snapshot: String): ActiveJobSnapshot {
+private fun parseJob(snapshot: String, action: Action): ActiveJobSnapshot {
     val active = parseIntOrNull(snapshot[0])
     val ready = parseIntOrNull(snapshot[1])
     val failed = parseIntOrNull(snapshot[2])
     val successful = parseIntOrNull(snapshot[3])
-    return newJob(Action.NOOP, TARGET_JOB, active, ready, failed, successful)
+    return newJob(action, TARGET_JOB, active, ready, failed, successful)
 }
 
 /**
  * Parse pod of Format {PHASE}/{CONTAINER_STATE}[{EXIT_CODE}]
  */
-private fun parsePod(snapshot: String): ActivePodSnapshot {
+private fun parsePod(snapshot: String, action: Action): ActivePodSnapshot {
     val split = snapshot.split("/")
     val phase = when(val phaseString = split[0]){
         "P" -> "Pending"
@@ -269,7 +268,7 @@ private fun parsePod(snapshot: String): ActivePodSnapshot {
         'T' -> containerStateTerminated(Integer.parseInt(containerStateString.substring(1)))
         else -> throw IllegalArgumentException("Unknown Container State for $containerStateString")
     }
-    return newPod(TARGET_POD, phase, TARGET_JOB, containerState)
+    return newPod(action, TARGET_POD, phase, TARGET_JOB, containerState)
 }
 
 private fun parseIntOrNull(property: Char): Int?{
@@ -280,7 +279,7 @@ private fun parseIntOrNull(property: Char): Int?{
 /**
  * Parse events of format {EVENT}({ELEMENT})|{EVENT}({ELEMENT})|{EVENT}({ELEMENT})
  */
-private fun <T: Snapshot> parseEvents(timeline: String, elementParser: (String) -> T): List<ResourceEvent<T>>{
+private fun <T: Snapshot> parseEvents(timeline: String, elementParser: (String, Action) -> T): List<ResourceEvent<T>>{
     val events = timeline
         .trim('|')
         .split("|")
@@ -289,9 +288,9 @@ private fun <T: Snapshot> parseEvents(timeline: String, elementParser: (String) 
         val trimmed = it.trim('-')
         if (trimmed.isBlank()) return@map ResourceEvent(Action.NOOP, null)
         val jobSnapshot = trimmed.substring(2, trimmed.length-1)
-        parseEvent(trimmed, elementParser(jobSnapshot))
+        parseEvent(trimmed, jobSnapshot, elementParser)
     }
 }
 
-fun parseJobEvents(timeline: String) = parseEvents(timeline) { parseJob(it) }
-fun parsePodEvents(timeline: String) = parseEvents(timeline) { parsePod(it) }
+fun parseJobEvents(timeline: String) = parseEvents(timeline) { snapshot, action -> parseJob(snapshot, action) }
+fun parsePodEvents(timeline: String) = parseEvents(timeline) { snapshot, action -> parsePod(snapshot, action) }

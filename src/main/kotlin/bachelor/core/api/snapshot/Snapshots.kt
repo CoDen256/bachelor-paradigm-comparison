@@ -43,12 +43,14 @@ data class ActiveJobSnapshot(val name: String,
 
         if (name != other.name) return false
         if (conditions != other.conditions) return false
+        if (lastAction != other.lastAction) return false
         return status == other.status
     }
 
     override fun hashCode(): Int {
         var result = name.hashCode()
         result = 31 * result + conditions.hashCode()
+        result = 31 * result + lastAction.hashCode()
         result = 31 * result + status.hashCode()
         return result
     }
@@ -129,12 +131,14 @@ data class ActivePodSnapshot(val name: String,
 
         if (name != other.name) return false
         if (mainContainerState != other.mainContainerState) return false
+        if (lastAction != other.lastAction) return false
         return phase == other.phase
     }
 
     override fun hashCode(): Int {
         var result = name.hashCode()
         result = 31 * result + mainContainerState.hashCode()
+        result = 31 * result + lastAction.hashCode()
         result = 31 * result + phase.hashCode()
         return result
     }
