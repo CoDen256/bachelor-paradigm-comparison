@@ -1,2 +1,0 @@
-DELETE https://036BE192C8C73E481D2FEC86BDD9F538.gr7.eu-central-1.eks.amazonaws.com/apis/batch/v1/namespaces/client-test/jobs/target-job
-{"apiVersion":"v1","kind":"DeleteOptions","propagationPolicy":"Background"}

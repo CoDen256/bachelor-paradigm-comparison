@@ -1,19 +1,16 @@
 package bachelor.executor.reactive
 
-import bachelor.kubernetes.utils.*
-import bachelor.executor.reactive.Action.*
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.ExecutionSnapshot
 import bachelor.core.api.snapshot.InitialJobSnapshot
 import bachelor.core.api.snapshot.InitialPodSnapshot
 import bachelor.core.api.snapshot.Logs
-import bachelor.core.api.utils.*
+import bachelor.core.executor.*
 import bachelor.core.impl.api.fabric8.reference
 import bachelor.core.impl.api.fabric8.snapshot
 import bachelor.core.impl.template.*
-import bachelor.core.executor.*
 import bachelor.core.utils.*
-import io.fabric8.kubernetes.api.model.*
+import bachelor.executor.reactive.Action.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -27,10 +24,7 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.concurrent.TimeoutException
 
-/**
- * Test pertaining [KubernetesJobExecutor.nextTerminatedSnapshot] method
- *
- */
+/** Test pertaining [KubernetesJobExecutor.nextTerminatedSnapshot] method */
 @ExtendWith(MockitoExtension::class)
 class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
@@ -38,11 +32,13 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
     lateinit var api: ReactiveJobApi
 
 
-    private fun nextTerminatedSnapshot(stream: Flux<ExecutionSnapshot>,
-                                       isRunningTimeout: Duration,
-                                       isTerminatedTimeout: Duration,
-                                       outerTimeout: Duration,
-                                       delaySubscription: Duration = Duration.ZERO): Mono<ExecutionSnapshot> {
+    private fun nextTerminatedSnapshot(
+        stream: Flux<ExecutionSnapshot>,
+        isRunningTimeout: Duration,
+        isTerminatedTimeout: Duration,
+        outerTimeout: Duration,
+        delaySubscription: Duration = Duration.ZERO
+    ): Mono<ExecutionSnapshot> {
         stream.log("ACTUAL").subscribe()
         // Trigger the hot source to emit elements independently of Runner
         // all elements emitted without delay, will be emitted on the subscription
@@ -74,7 +70,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         verify(api).getLogs(expected.reference())
     }
 
-    
+
     @Test
     fun initialStatesAndTerminatedStateCached() {
         val expected = successfulPod()
@@ -180,8 +176,10 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // EXERCISE
         whenever(api.getLogs(any())).thenReturn(just("LOGS"))
-        val result = nextTerminatedSnapshot(stream, millis(1000), millis(1000), millis(1000),
-            delaySubscription = subscriptionDelay)
+        val result = nextTerminatedSnapshot(
+            stream, millis(1000), millis(1000), millis(1000),
+            delaySubscription = subscriptionDelay
+        )
 
 
         // VERIFY
@@ -236,7 +234,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodNotRunningTimeoutException> {
-               assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), it.currentState)
             }
     }
 
@@ -316,7 +314,10 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownSnapshot()))
-            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())) // delay of 500ms
+            emit(
+                millis(300),
+                ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())
+            ) // delay of 500ms
             emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
         }
 

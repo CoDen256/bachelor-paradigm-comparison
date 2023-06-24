@@ -4,8 +4,6 @@ import bachelor.executor.reactive.ReactiveJobExecutor
 import bachelor.core.impl.api.fabric8.Fabric8ReactiveJobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
-import bachelor.core.ImageRunRequest
-import bachelor.core.KubernetesBasedImageRunner
 import com.google.gson.reflect.TypeToken
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
@@ -23,7 +21,7 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 
-class MethodRunner {
+class JobExecutionRunner {
 
 
     private val client = KubernetesClientBuilder()

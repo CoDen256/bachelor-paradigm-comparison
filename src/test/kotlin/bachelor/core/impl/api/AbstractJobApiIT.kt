@@ -1,4 +1,4 @@
-package bachelor.core.impl.api.imperative
+package bachelor.core.impl.api
 
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.JobApi
@@ -27,17 +27,6 @@ import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-
-const val NAMESPACE = "client-test"
-
-const val JOB_CREATED_TIMEOUT = 5L
-const val JOB_DELETED_TIMEOUT = 5L
-const val JOB_DONE_TIMEOUT = 20L
-
-const val POD_CREATED_TIMEOUT = 5L
-const val POD_READY_TIMEOUT = 5L
-const val POD_TERMINATED_TIMEOUT = 10L
-const val POD_DELETED_TIMEOUT = 10L
 
 abstract class AbstractJobApiIT(
     private val newJobApi: (String) -> JobApi
