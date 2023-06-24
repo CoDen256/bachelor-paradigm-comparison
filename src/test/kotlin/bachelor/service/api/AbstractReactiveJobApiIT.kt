@@ -1,7 +1,6 @@
 package bachelor.service.api
 
 import bachelor.kubernetes.utils.*
-import bachelor.reactive.kubernetes.events.Action
 import bachelor.reactive.kubernetes.events.ResourceEvent
 import bachelor.service.api.resources.JobReference
 import bachelor.service.api.resources.PodReference
@@ -10,11 +9,9 @@ import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.RunningState
 import bachelor.service.api.snapshot.WaitingState
 import bachelor.service.config.fabric8.reference
-import bachelor.service.config.fabric8.snapshot
 import bachelor.service.config.utils.BaseJobTemplateFiller
 import bachelor.service.config.utils.JobTemplateFileLoader
-import com.google.common.truth.Truth
-import io.fabric8.kubernetes.client.ConfigBuilder
+import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
@@ -32,7 +29,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
     private val resolver = BaseJobTemplateFiller()
     private val jobSpecFile = "/template/job.yaml"
-    private val jobSpecProvider = JobTemplateFileLoader(File(DefaultKubernetesClientReactiveJobApiIT::class.java.getResource(jobSpecFile)!!.toURI()))
+    private val jobSpecProvider = JobTemplateFileLoader(File(this::class.java.getResource(jobSpecFile)!!.toURI()))
 
     private val namespace = "client-test"
     private val JOB_CREATED_TIMEOUT = 5L
@@ -56,7 +53,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
     @AfterEach
     fun teardown() {
         api.deleteAllJobsAndAwaitNoJobsPresent()
-        api.awaitNoPodsPresent()
+        awaitNoPodsPresent()
         api.close()
         api.jobEvents().collectList().block()?.forEach { println(it) }
         println("--------")
@@ -116,7 +113,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -124,7 +121,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
         val podEvents = getPodEvents()
         val name = podEvents[0].element!!.name
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = name),
                 upd("Pending", name = name),
@@ -143,7 +140,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -152,7 +149,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
         val podEvents = getPodEvents()
         val name = podEvents[0].element!!.name
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = name),
                 upd("Pending", name = name),
@@ -174,7 +171,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -182,7 +179,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -205,7 +202,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -213,7 +210,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -238,7 +235,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -248,7 +245,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
 
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -274,7 +271,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsAtLeastElementsIn(
+        assertThat(events).containsAtLeastElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -283,7 +280,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
 
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -307,7 +304,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -320,7 +317,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -346,7 +343,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -362,7 +359,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
             )
         )
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -391,7 +388,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -405,7 +402,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
 
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -431,7 +428,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -448,7 +445,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
 
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -478,7 +475,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
 
         // verify
         val events = getJobEvents()
-        Truth.assertThat(events).containsExactlyElementsIn(
+        assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -486,7 +483,7 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         )
 
         val podEvents = getPodEvents()
-        Truth.assertThat(podEvents).containsExactlyElementsIn(
+        assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -550,18 +547,6 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         return pod.get()
     }
 
-    private fun JobReference.awaitUntilMatches(
-        timeout: Long,
-        active: Int?,
-        ready: Int?,
-        failed: Int?,
-        succeeded: Int?
-    ) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { jobExists(this, active, ready, failed, succeeded) }
-    }
-
     private fun awaitUntilPodReady(job: JobReference) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(POD_READY_TIMEOUT))
@@ -586,10 +571,10 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         }
     }
 
-    private fun ReactiveJobApi.deleteAndAwaitUntilJobDeleted(job: JobReference) {
+    private fun ReactiveJobApi.deleteAndAwaitUntilJobDeleted(job: JobReference, timeout: Long = JOB_DELETED_TIMEOUT) {
         delete(job)
         Awaitility.await()
-            .atMost(Duration.ofSeconds(JOB_DELETED_TIMEOUT))
+            .atMost(Duration.ofSeconds(timeout))
             .until { !jobExists(job) }
     }
 
@@ -599,32 +584,15 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
         }
     }
 
-    private fun ReactiveJobApi.awaitNoPodsPresent(timeout: Long = POD_DELETED_TIMEOUT) {
+    private fun awaitNoPodsPresent(timeout: Long = POD_DELETED_TIMEOUT) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(timeout))
             .until { getPods().isEmpty() }
     }
 
 
-    private fun jobExists(job: JobReference, active: Int?, ready: Int?, failed: Int?, succeeded: Int?) = getJobs().any {
-        getJobs().any { (name, uid) ->
-            job.matches(name, uid) && job.matches(active, ready, failed, succeeded)
-        }
-    }
-
     private fun jobExists(job: JobReference) = getJobs().any { (name, uid) ->
-        job.matches(name, uid)
-    }
-
-    private fun JobReference.matches(name: String, uid: String) =
-        name == TARGET_JOB && name == this.name && uid == this.uid
-
-    private fun JobReference.matches(active: Int?, ready: Int?, failed: Int?, succeeded: Int?): Boolean {
-        val job = helperClient.batch().v1().jobs().inNamespace(namespace).withName(name).get()
-        println("FOUND: ${job.snapshot(Action.NOOP)}")
-        return job.status.let {
-            it.active == active && it.ready == ready && it.succeeded == succeeded && it.failed == failed
-        }
+        name == TARGET_JOB && name == job.name && uid == job.uid
     }
 
     private fun getJobs(): List<JobReference> {
@@ -656,16 +624,6 @@ abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> React
                 "FAIL" to listOf("", "f/f")[fail.toInt()]
             )
         )
-    }
-
-    private inline fun <reified T : Any> List<T>.log(): List<T> {
-        if (isEmpty()) {
-            println("${T::class.java.simpleName}(<empty>)")
-        }
-        return map {
-            println(it)
-            it
-        }
     }
 
     private fun Boolean.toInt(): Int {
