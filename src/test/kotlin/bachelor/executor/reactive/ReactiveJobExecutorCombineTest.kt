@@ -19,7 +19,7 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
 /**
- * Tests pertaining [KubernetesJobExecutor.filterAndCombineSnapshots]
+ * Tests pertaining [ReactiveJobExecutor.filterAndCombineSnapshots]
  * method
  */
 @ExtendWith(MockitoExtension::class)

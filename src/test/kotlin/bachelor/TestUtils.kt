@@ -1,7 +1,10 @@
 package bachelor
 
 
+import bachelor.core.impl.api.NAMESPACE
+import bachelor.core.template.JobTemplateFiller
 import bachelor.core.utils.generate.DelayedEmitterBuilder
+import bachelor.core.utils.generate.TARGET_JOB
 import org.junit.jupiter.api.Assertions
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -32,3 +35,20 @@ fun <T> cachedEmitter(builder: DelayedEmitterBuilder<T>.() -> DelayedEmitterBuil
 }
 
 fun millis(millis: Long): Duration = Duration.ofMillis(millis)
+
+// GENERAL HELPER METHODS
+fun JobTemplateFiller.resolveSpec(template: String, executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): String {
+    return fill(template, mapOf(
+            "NAMESPACE" to NAMESPACE,
+            "NAME" to TARGET_JOB,
+            "SLEEP" to "$executionTime",
+            "TTL" to "$ttl",
+            "CODE" to "$exitCode",
+            "FAIL" to listOf("", "f/f")[fail.toInt()]
+        )
+    )
+}
+
+fun Boolean.toInt(): Int {
+    return if (this) 1 else 0
+}

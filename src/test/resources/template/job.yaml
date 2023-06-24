@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  namespace: client-test
+  namespace: ${NAMESPACE}
   name: ${NAME}
 spec:
   ttlSecondsAfterFinished: ${TTL}

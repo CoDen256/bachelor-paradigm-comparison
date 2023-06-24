@@ -4,10 +4,12 @@ import bachelor.core.api.JobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.impl.api.fabric8.reference
-import bachelor.core.impl.template.*
-import bachelor.core.utils.*
+import bachelor.core.impl.template.BaseJobTemplateFiller
+import bachelor.core.impl.template.JobTemplateFileLoader
+import bachelor.core.template.JobTemplateFiller
 import bachelor.core.utils.generate.*
 import bachelor.executor.reactive.ResourceEvent
+import bachelor.resolveSpec
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.api.model.NamespaceBuilder
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder
@@ -505,7 +507,7 @@ abstract class AbstractJobApiIT(
         exitCode: Int = 0,
         fail: Boolean = false
     ): JobReference {
-        val job = create(resolveSpec(executionTime, ttl, exitCode, fail))
+        val job = create(resolver.resolveSpec(jobSpecProvider.getTemplate(), executionTime, ttl, exitCode, fail))
         awaitUntilJobCreated(job)
         return job
     }
@@ -572,23 +574,6 @@ abstract class AbstractJobApiIT(
 
     private fun findPod(job: JobReference): PodReference? {
         return getPods().find { it.controllerUid == job.uid }
-    }
-
-    // GENERAL HELPER METHODS
-    private fun resolveSpec(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): String {
-        return resolver.fill(
-            jobSpecProvider.getTemplate(), mapOf(
-                "NAME" to TARGET_JOB,
-                "SLEEP" to "$executionTime",
-                "TTL" to "$ttl",
-                "CODE" to "$exitCode",
-                "FAIL" to listOf("", "f/f")[fail.toInt()]
-            )
-        )
-    }
-
-    private fun Boolean.toInt(): Int {
-        return if (this) 1 else 0
     }
 
     // HELPER KUBERNETES CLIENT TO VERIFY ACTUAL STATE ON THE KUBERNETES CLUSTER

@@ -26,7 +26,7 @@ import reactor.test.StepVerifier
 import java.time.Duration
 
 /**
- * Tests pertaining [KubernetesJobExecutor.executeUntilTerminated] method
+ * Tests pertaining [ReactiveJobExecutor.executeUntilTerminated] method
  * Each test represents a timeline of pod and job events. Each column of
  * a timeline represents a delay/interval of a fixed amount of time. Each
  * event represents an action and a resource to which action occurs. The

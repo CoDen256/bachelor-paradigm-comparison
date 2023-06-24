@@ -26,7 +26,7 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.concurrent.TimeoutException
 
-/** Test pertaining [KubernetesJobExecutor.nextTerminatedSnapshot] method */
+/** Test pertaining [ReactiveJobExecutor.nextTerminatedSnapshot] method */
 @ExtendWith(MockitoExtension::class)
 class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
