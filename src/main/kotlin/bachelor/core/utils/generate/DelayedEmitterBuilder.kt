@@ -1,4 +1,4 @@
-package bachelor.core.utils
+package bachelor.core.utils.generate
 
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

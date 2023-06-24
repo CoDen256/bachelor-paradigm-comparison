@@ -113,12 +113,15 @@ object InitialPodSnapshot : PodSnapshot {
  * contains information about its status and states, like phase
  * or state of the main container at a particular point in time.
  */
-data class ActivePodSnapshot(val name: String,
-                             val namespace: String,
-                             val controllerUid: String,
-                             val mainContainerState: ContainerState,
-                             val phase: String,
-                             val lastAction: String="NOOP") : PodSnapshot {
+data class ActivePodSnapshot(
+    val name: String,
+    val uid: String,
+    val namespace: String,
+    val controllerUid: String,
+    val mainContainerState: ContainerState,
+    val phase: String,
+    val lastAction: String = "NOOP"
+) : PodSnapshot {
 
     override fun toString(): String {
         return "$phase/$mainContainerState"
@@ -144,7 +147,7 @@ data class ActivePodSnapshot(val name: String,
     }
 
     fun reference(): PodReference {
-        return PodReference(name, namespace, controllerUid)
+        return PodReference(name, uid, namespace, controllerUid)
     }
 
 }

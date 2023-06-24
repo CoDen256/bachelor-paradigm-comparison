@@ -1,16 +1,10 @@
 package bachelor.core.utils
 
 
-import bachelor.core.api.snapshot.ActiveJobSnapshot
-import bachelor.core.api.snapshot.ActivePodSnapshot
-import bachelor.core.api.snapshot.Snapshot
-import bachelor.core.impl.api.fabric8.snapshot
+import bachelor.core.api.snapshot.*
+import bachelor.core.utils.generate.DelayedEmitterBuilder
 import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
-import io.fabric8.kubernetes.api.model.*
-import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
-import io.fabric8.kubernetes.api.model.batch.v1.JobCondition
-import io.fabric8.kubernetes.api.model.batch.v1.JobStatusBuilder
 import org.junit.jupiter.api.Assertions
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -22,13 +16,13 @@ const val TARGET_POD = "target-pod" // fake pod id
 // EVENTS
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)
 
-fun add(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
+fun add(phase: String, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.ADD, newPod(Action.ADD, name, phase, TARGET_JOB, targetState))
 
-fun upd(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
+fun upd(phase: String, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.UPDATE, newPod(Action.UPDATE, name, phase, TARGET_JOB, targetState))
 
-fun del(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
+fun del(phase: String, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.DELETE, newPod(Action.DELETE, name, phase, TARGET_JOB, targetState))
 
 fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
@@ -115,70 +109,33 @@ fun waitingPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSn
 }
 
 fun unknownPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return newPod(name, "Pending", job, null)
+    return newPod(name, "Pending", job, UnknownState)
 }
 
-fun containerStateWaiting(reason: String = "", message: String = ""): ContainerStateWaiting = ContainerStateWaiting(message, reason)
-fun containerStateRunning(startedAt: String = "0000"): ContainerStateRunning = ContainerStateRunning(startedAt)
-fun containerStateTerminated(code: Int, reason: String = "", message: String = "", finishedAt: String = "1111"): ContainerStateTerminated =
-    ContainerStateTerminated("", code, finishedAt, message, reason, 0, "")
+fun containerStateWaiting(reason: String = "", message: String = "") = WaitingState(reason, message)
+fun containerStateRunning(startedAt: String = "0000") =  RunningState(startedAt)
+fun containerStateTerminated(code: Int, reason: String = "", message: String = "") = TerminatedState(reason, message, code)
 
-fun newPod(action: Action, name: String, phase: String, job: String, state: KubernetesResource? = null): ActivePodSnapshot {
-    val meta = ObjectMetaBuilder()
-        .withUid(name)
-        .withName(name)
-        .withLabels<String, String>(mapOf("controller-uid" to job))
-        .build()
-
-    val containerState: ContainerState = ContainerStateBuilder().run {
-        when (state) {
-            is ContainerStateWaiting -> withWaiting(state)
-            is ContainerStateRunning -> withRunning(state)
-            is ContainerStateTerminated -> withTerminated(state)
-            else -> this
-        }
-    }.build()
-
-    val containerStatus = ContainerStatusBuilder()
-        .withState(containerState)
-        .build()
-
-    val status = PodStatusBuilder()
-        .withPhase(phase)
-        .withContainerStatuses(listOf(containerStatus))
-        .build()
-
-    return PodBuilder()
-        .withMetadata(meta)
-        .withStatus(status)
-        .build()
-        .snapshot(action)
-}
-
-fun newPod(name: String, phase: String, job: String, state: KubernetesResource? = null): ActivePodSnapshot{
+fun newPod(name: String, phase: String, job: String, state: ContainerState = UnknownState): ActivePodSnapshot{
     return newPod(Action.NOOP, name, phase, job, state)
+}
+
+fun newPod(action: Action, name: String, phase: String, job: String, state: ContainerState = UnknownState): ActivePodSnapshot {
+    return ActivePodSnapshot(name, name, "", job, state, phase, action.name)
 }
 
 
 fun newJob(action: Action, name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null,
            conditions: List<String> = listOf()
 ): ActiveJobSnapshot {
-    val meta = ObjectMetaBuilder()
-        .withUid(name)
-        .withName(name)
-        .build()
-    val status = JobStatusBuilder()
-        .withActive(active)
-        .withReady(ready)
-        .withSucceeded(succeeded)
-        .withFailed(failed)
-        .withConditions(conditions.map { JobCondition("", "", "", "", "True", it) })
-        .build()
-    return JobBuilder()
-        .withMetadata(meta)
-        .withStatus(status)
-        .build()
-        .snapshot(action)
+    return ActiveJobSnapshot(
+        name,
+        name,
+        "",
+        conditions.map { JobCondition("True", "", it, "") },
+        JobStatus(active, ready, failed, succeeded),
+        action.name
+    )
 }
 
 fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null,
@@ -262,7 +219,7 @@ private fun parsePod(snapshot: String, action: Action): ActivePodSnapshot {
     }
     val containerStateString = split[1]
     val containerState = when(containerStateString[0]){
-        'U' -> null
+        'U' -> UnknownState
         'W' -> containerStateWaiting()
         'R' -> containerStateRunning()
         'T' -> containerStateTerminated(Integer.parseInt(containerStateString.substring(1)))

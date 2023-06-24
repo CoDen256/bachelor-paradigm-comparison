@@ -367,7 +367,7 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
      */
     private fun getLogs(podSnapshot: PodSnapshot): Mono<Logs> {
         if (podSnapshot !is ActivePodSnapshot) return Mono.empty()
-        return api.getLogs(PodReference(podSnapshot.name, podSnapshot.namespace, podSnapshot.controllerUid)).map { Logs(it) }
+        return api.getLogs(podSnapshot.reference()).map { Logs(it) }
     }
 
     /**

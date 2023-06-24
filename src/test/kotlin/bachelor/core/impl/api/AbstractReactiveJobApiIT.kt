@@ -586,7 +586,7 @@ abstract class AbstractReactiveJobApiIT(
     private fun jobExists(job: JobReference) = getJobs().contains(job)
 
     private fun findPod(job: JobReference): PodReference? {
-        return getPods().find { it.jobId == job.uid }
+        return getPods().find { it.controllerUid == job.uid }
     }
 
     // GENERAL HELPER METHODS

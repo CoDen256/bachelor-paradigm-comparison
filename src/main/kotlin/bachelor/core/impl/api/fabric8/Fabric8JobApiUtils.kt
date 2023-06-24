@@ -12,9 +12,9 @@ import io.fabric8.kubernetes.api.model.batch.v1.JobCondition as KubernetesJobCon
 /** Creates a snapshot from the [Job] * */
 fun Job.snapshot(lastAction: Action = Action.NOOP) =
     ActiveJobSnapshot(
-        metadata?.name ?: "[Job name unavailable]",
-        metadata?.uid ?: "[Job uid unavailable]",
-        metadata?.namespace ?: "[Pod namespace unavailable]",
+        metadata?.name ?: "",
+        metadata?.uid ?: "",
+        metadata?.namespace ?: "",
         getJobConditions(this),
         getJobStatus(this),
         lastAction.name
@@ -25,9 +25,10 @@ fun Pod.reference() = snapshot().reference()
 /** Creates a snapshot from the [Pod] * */
 fun Pod.snapshot(lastAction: Action = Action.NOOP) =
     ActivePodSnapshot(
-        metadata?.name ?: "[Pod name unavailable]",
-        metadata?.namespace ?: "[Pod namespace unavailable]",
-        metadata?.labels?.get("controller-uid") ?: "[Pod namespace unavailable]",
+        metadata?.name ?: "",
+        metadata?.uid ?: "",
+        metadata?.namespace ?: "",
+        metadata?.labels?.get("controller-uid") ?: "",
         getMainContainerState(this),
         getPhase(this),
         lastAction.name

@@ -22,12 +22,13 @@ fun Pod.reference() = snapshot().reference()
 /** Creates a snapshot from the [Pod] * */
 fun Pod.snapshot(lastAction: Action = Action.NOOP) =
     ActivePodSnapshot(
-        metadata?.name ?: "[Pod name unavailable]",
-        metadata?.namespace ?: "[Pod namespace unavailable]",
-        metadata?.labels?.get("controller-uid") ?: "[Pod namespace unavailable]",
+        metadata?.name ?: "",
+        metadata?.uid ?: "",
+        metadata?.namespace ?: "",
+        metadata?.labels?.get("controller-uid") ?: "",
         getMainContainerState(this),
         getPhase(this),
-                lastAction.name
+        lastAction.name
     )
 
 
