@@ -5,20 +5,6 @@ import bachelor.service.api.snapshot.ExecutionSnapshot
 import java.time.Duration
 
 /**
- * [InvalidJobSpecException] is thrown, when the job spec created from
- * template has invalid syntax and cannot be loaded to a job
- */
-class InvalidJobSpecException(msg: String, cause: Throwable?) : ServerException(msg, cause)
-
-
-/**
- * [JobAlreadyExistsException] is thrown, when [JobApi] attempts to create
- * a job that is already running the Cluster
- */
-class JobAlreadyExistsException(msg: String, cause: Throwable?) : ServerException(msg, cause)
-
-
-/**
  * [PodNotRunningTimeoutException] is thrown, when [Pod] has not been
  * run or terminated yet within the specified deadline (has not reached
  * TerminatedState or RunningState), because it stays in WaitingState or
