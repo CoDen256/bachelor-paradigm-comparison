@@ -166,8 +166,8 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndSucceed_ThenSuccessful() {
         // SETUP
-        val expectedJob = newJob(TARGET_JOB, 1, 1, null, null).snapshot(UPDATE)
-        val expectedPod = newPod(TARGET_POD, "Running", TARGET_JOB, containerStateTerminated(0)).snapshot(UPDATE)
+        val expectedJob = newJob(UPDATE, TARGET_JOB, 1, 1, null, null)
+        val expectedPod = newPod(UPDATE, TARGET_POD, "Running", TARGET_JOB, containerStateTerminated(0))
         val expectedLogs = "HUSTENSAFT"
 
         val (jobStream, podStream) = emitEventsAndLog(
@@ -201,9 +201,9 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndFail_ThenFailure() {
         // SETUP
-        val expectedJobSnapshot = newJob(TARGET_JOB, 1, 1, null, null).snapshot(UPDATE)
+        val expectedJobSnapshot = newJob(UPDATE, TARGET_JOB, 1, 1, null, null)
         val expectedPodSnapshot =
-            newPod(TARGET_POD, "Running", TARGET_JOB, containerStateTerminated(1)).snapshot(UPDATE)
+            newPod(UPDATE, TARGET_POD, "Running", TARGET_JOB, containerStateTerminated(1))
         val expectedLogs = "HUSTEN..."
 
         val (jobStream, podStream) = emitEventsAndLog(
@@ -246,9 +246,9 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndSucceedSkipRunning_ThenSuccessful() {
         // SETUP
-        val expectedJobSnapshot = newJob(TARGET_JOB, 1, 0, null, null).snapshot(UPDATE)
+        val expectedJobSnapshot = newJob(UPDATE, TARGET_JOB, 1, 0, null, null)
         val expectedPodSnapshot =
-            newPod(TARGET_POD, "Pending", TARGET_JOB, containerStateTerminated(0)).snapshot(UPDATE)
+            newPod(UPDATE, TARGET_POD, "Pending", TARGET_JOB, containerStateTerminated(0))
         val expectedLogs = "HUSTENSAFT"
 
         val (jobStream, podStream) = emitEventsAndLog(
@@ -282,8 +282,8 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndFailSkipRunning_ThenFailure() {
         // SETUP
-        val expectedJob = newJob(TARGET_JOB, 1, 0, null, null).snapshot(UPDATE)
-        val expectedPod = newPod(TARGET_POD, "Pending", TARGET_JOB, containerStateTerminated(1)).snapshot(UPDATE)
+        val expectedJob = newJob(UPDATE, TARGET_JOB, 1, 0, null, null)
+        val expectedPod = newPod(UPDATE, TARGET_POD, "Pending", TARGET_JOB, containerStateTerminated(1))
         val expectedLogs = "HUSTEN...."
 
         val (jobStream, podStream) = emitEventsAndLog(
@@ -319,8 +319,8 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndFailToStart_ThenPodNotRunningTimeout() {
         // SETUP
-        val expectedJobSnapshot = newJob(TARGET_JOB, 1, 0, null, null).snapshot(UPDATE)
-        val expectedPodSnapshot = newPod(TARGET_POD, "Pending", TARGET_JOB, containerStateWaiting()).snapshot(UPDATE)
+        val expectedJobSnapshot = newJob(UPDATE, TARGET_JOB, 1, 0, null, null)
+        val expectedPodSnapshot = newPod(UPDATE, TARGET_POD, "Pending", TARGET_JOB, containerStateWaiting())
 
         val (jobStream, podStream) = emitEventsAndLog(
             100, 100, 100,
@@ -355,8 +355,8 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeForTooLong_ThenPodNotTerminatedTimeout() {
         // SETUP
-        val expectedJobSnapshot = newJob(TARGET_JOB, 1, 0, null, null).snapshot(UPDATE)
-        val expectedPodSnapshot = newPod(TARGET_POD, "Running", TARGET_JOB, containerStateRunning()).snapshot(UPDATE)
+        val expectedJobSnapshot = newJob(UPDATE, TARGET_JOB, 1, 0, null, null)
+        val expectedPodSnapshot = newPod(UPDATE, TARGET_POD, "Running", TARGET_JOB, containerStateRunning())
 
         val (jobStream, podStream) = emitEventsAndLog(
             100, 100, 100,
@@ -388,8 +388,8 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeWithNoEventAfterRunningForTooLong_ThenSuccessful() {
         // SETUP
-        val expectedJob = newJob(TARGET_JOB, null, null, null, null).snapshot(ADD)
-        val expectedPod = newPod(TARGET_POD, "Succeeded", TARGET_JOB, containerStateTerminated(0)).snapshot(UPDATE)
+        val expectedJob = newJob(ADD, TARGET_JOB, null, null, null, null)
+        val expectedPod = newPod(UPDATE, TARGET_POD, "Succeeded", TARGET_JOB, containerStateTerminated(0))
         val expectedLogs = "HUSTENSAFT"
 
         val (jobStream, podStream) = emitEventsAndLog(

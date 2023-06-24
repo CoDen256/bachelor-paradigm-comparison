@@ -268,6 +268,8 @@ abstract class AbstractReactiveJobApiIT(
     @Test
     fun events_CreateAwaitUntilPodTerminatedDelete() {
         // execute
+        // TODO: sometimes still fails, because some running got catched, even if low execution time
+
         val job = api.createAndAwaitUntilJobCreated(0, 0) // execution time 0, running will be skipped
         val pod = awaitUntilPodCreated(job)
         awaitUntilPodReady(job)

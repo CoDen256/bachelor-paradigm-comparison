@@ -57,7 +57,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         whenever(api.getLogs(any())).thenReturn(just("LOGS"))
 
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
         // EXERCISE
@@ -65,7 +65,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -76,7 +76,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
         // EXERCISE
@@ -85,7 +85,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -96,7 +96,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
         // Two initial snapshots, emitted on the first fake subscription before the actual one
         // Successful Snapshot emitted after the actual subscription
@@ -107,7 +107,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -120,7 +120,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
         // EXERCISE
@@ -129,7 +129,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -142,7 +142,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
         // EXERCISE
@@ -151,7 +151,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -165,7 +165,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot(code = 1)))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
         // All the emitted values are cached and emitted before the first subscription, thus
         // we want the latest of the emitted, not the first -> cache(1)
@@ -184,7 +184,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -197,7 +197,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
             emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
         }
         // We don't want to wait for the next one, and we are accepting first snapshot as the right one
@@ -213,7 +213,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected))
             .verifyComplete()
         verify(api).getLogs(expected.reference())
     }
@@ -225,7 +225,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = successfulPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
         }
 
         // EXERCISE
@@ -243,7 +243,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // SETUP
         val expected = runningPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
             emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
         }
 
@@ -254,7 +254,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodNotTerminatedTimeoutException> {
-                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -266,7 +266,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
-            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
             emit(millis(600), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
         }
 
@@ -277,7 +277,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodNotTerminatedTimeoutException> {
-                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -288,7 +288,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val expected = waitingPod()
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()))
+            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
             emit(millis(500), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
         }
         // it works without problems and cache(1), because stream delivers always the new value, because it caches the last one and
@@ -302,7 +302,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodNotRunningTimeoutException> {
-                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -316,7 +316,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownSnapshot()))
             emit(
                 millis(300),
-                ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())
+                ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)
             ) // delay of 500ms
             emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))
         }
@@ -328,7 +328,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodNotRunningTimeoutException> {
-                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -340,7 +340,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(millis(200), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, unknownSnapshot()))
-            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())) // 500 ms
+            emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 500 ms
             emit(millis(300), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, successfulSnapshot()))//800 ms
         }
 
@@ -356,7 +356,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodNotTerminatedTimeoutException> {
-                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -370,7 +370,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())) // 300 ms
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 300 ms
         }
 
         // EXERCISE
@@ -380,7 +380,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodTerminatedWithErrorException> {
-                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs("LOGS"), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -393,7 +393,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())) // 300 ms
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 300 ms
         }
 
         // EXERCISE
@@ -403,7 +403,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // VERIFY
         StepVerifier.create(result)
             .verifyError<PodTerminatedWithErrorException> {
-                assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot()), it.currentState)
+                assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected), it.currentState)
             }
         verify(api).getLogs(expected.reference())
     }
@@ -416,7 +416,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, waitingSnapshot()))
             emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, runningSnapshot()))
-            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected.snapshot())) // 300 ms
+            emit(millis(100), ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected)) // 300 ms
         }
 
         // EXERCISE

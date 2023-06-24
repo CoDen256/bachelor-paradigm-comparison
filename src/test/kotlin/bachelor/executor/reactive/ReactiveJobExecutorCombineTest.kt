@@ -62,7 +62,7 @@ class ReactiveJobExecutorCombineTest {
         // SETUP
         val expectedJob = inactiveJob()
         val jobStream: Flux<ActiveJobSnapshot> = cachedEmitter {
-            emit(millis(200), expectedJob.snapshot())
+            emit(millis(200), expectedJob)
             // jobStream gets subscribed first, so if there is two job states before the pod state
             // it will result into one global state with the latest states
             // we need a little delay, so two jobs will be separately emitted
@@ -78,7 +78,7 @@ class ReactiveJobExecutorCombineTest {
         // VERIFY
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), InitialPodSnapshot))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, InitialPodSnapshot))
             .verifyComplete()
     }
 
@@ -90,7 +90,7 @@ class ReactiveJobExecutorCombineTest {
             completeOnLast()
         }
         val podStream: Flux<ActivePodSnapshot> = cachedEmitter {
-            emit(expectedPod.snapshot())
+            emit(expectedPod)
             // delay is not needed, because jobStream gets subscribed first, so there is always
             // at least an unknown job before the incoming two pod states
             completeOnLast()
@@ -102,7 +102,7 @@ class ReactiveJobExecutorCombineTest {
         // VERIFY
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expectedPod.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expectedPod))
             .verifyComplete()
     }
 
@@ -113,11 +113,11 @@ class ReactiveJobExecutorCombineTest {
         val expectedPod = waitingPod()
 
         val jobStream: Flux<ActiveJobSnapshot> = cachedEmitter {
-            emit(expectedJob.snapshot())
+            emit(expectedJob)
             completeOnLast()
         }
         val podStream: Flux<ActivePodSnapshot> = cachedEmitter {
-            emit(expectedPod.snapshot())
+            emit(expectedPod)
             completeOnLast()
         }
 
@@ -130,8 +130,8 @@ class ReactiveJobExecutorCombineTest {
 
         // VERIFY
         StepVerifier.create(result)
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), expectedPod.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, InitialPodSnapshot))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, expectedPod))
             .verifyComplete()
     }
 
@@ -141,11 +141,11 @@ class ReactiveJobExecutorCombineTest {
         val expectedJob = inactiveJob()
         val expectedPod = waitingPod()
         val jobStream: Flux<ActiveJobSnapshot> = cachedEmitter {
-            emit(millis(200), expectedJob.snapshot())
+            emit(millis(200), expectedJob)
             completeOnLast()
         }
         val podStream: Flux<ActivePodSnapshot> = cachedEmitter {
-            emit(millis(250), expectedPod.snapshot())
+            emit(millis(250), expectedPod)
             completeOnLast()
         }
 
@@ -161,8 +161,8 @@ class ReactiveJobExecutorCombineTest {
         // VERIFY
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), expectedPod.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, InitialPodSnapshot))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, expectedPod))
             .verifyComplete()
     }
 
@@ -175,7 +175,7 @@ class ReactiveJobExecutorCombineTest {
             emit(inactiveJobSnapshot("wrongJob"))
             emit(millis(100), inactiveJobSnapshot("wrongJob"))
             emit(millis(100), inactiveJobSnapshot("wrongJob"))
-            emit(millis(100), expectedJob.snapshot()) // actual job
+            emit(millis(100), expectedJob) // actual job
             emit(millis(100), inactiveJobSnapshot("wrongJob"))
             completeOnLast()
         }
@@ -183,7 +183,7 @@ class ReactiveJobExecutorCombineTest {
             emit(unknownSnapshot("wrongPod", "wrongJob"))
             emit(millis(100), waitingSnapshot("wrongPod", "wrongJob"))
             emit(millis(100), runningSnapshot("wrongPod", "wrongJob"))
-            emit(millis(200), expectedPod.snapshot()) // actual pod
+            emit(millis(200), expectedPod) // actual pod
             emit(millis(100), failedSnapshot("wrongPod", "wrongJob"))
             completeOnLast()
         }
@@ -197,8 +197,8 @@ class ReactiveJobExecutorCombineTest {
         // VERIFY
         StepVerifier.create(result)
             .expectNext(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), InitialPodSnapshot))
-            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob.snapshot(), expectedPod.snapshot()))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, InitialPodSnapshot))
+            .expectNext(ExecutionSnapshot(Logs.empty(), expectedJob, expectedPod))
             .verifyComplete()
     }
 

@@ -1,14 +1,13 @@
 package bachelor.core.utils
 
 
-import bachelor.executor.reactive.Action
-import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.snapshot.ActiveJobSnapshot
 import bachelor.core.api.snapshot.ActivePodSnapshot
 import bachelor.core.api.snapshot.Snapshot
 import bachelor.core.impl.api.fabric8.snapshot
+import bachelor.executor.reactive.Action
+import bachelor.executor.reactive.ResourceEvent
 import io.fabric8.kubernetes.api.model.*
-import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
 import io.fabric8.kubernetes.api.model.batch.v1.JobCondition
 import io.fabric8.kubernetes.api.model.batch.v1.JobStatusBuilder
@@ -24,40 +23,40 @@ const val TARGET_POD = "target-pod" // fake pod id
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)
 
 fun add(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.ADD, newPod(name, phase, TARGET_JOB, targetState).snapshot())
+    ResourceEvent(Action.ADD, newPod(name, phase, TARGET_JOB, targetState))
 
 fun upd(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.UPDATE, newPod(name, phase, TARGET_JOB, targetState).snapshot())
+    ResourceEvent(Action.UPDATE, newPod(name, phase, TARGET_JOB, targetState))
 
 fun del(phase: String, targetState: KubernetesResource? = null, name: String = TARGET_POD) =
-    ResourceEvent(Action.DELETE, newPod(name, phase, TARGET_JOB, targetState).snapshot())
+    ResourceEvent(Action.DELETE, newPod(name, phase, TARGET_JOB, targetState))
 
 fun add(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions).snapshot())
+    ResourceEvent(Action.ADD, newJob(name, active, ready, failed, succeeded, conditions))
 
 fun upd(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.UPDATE, newJob(name, active, ready, failed, succeeded, conditions).snapshot())
+    ResourceEvent(Action.UPDATE, newJob(name, active, ready, failed, succeeded, conditions))
 
 fun del(active: Int?, ready: Int?, failed: Int?, succeeded: Int?, conditions: List<String> = listOf(), name: String = TARGET_JOB) =
-    ResourceEvent(Action.DELETE, newJob(name, active, ready, failed, succeeded, conditions).snapshot())
+    ResourceEvent(Action.DELETE, newJob(name, active, ready, failed, succeeded, conditions))
 
 
 
 // JOB SNAPSHOT
 fun inactiveJobSnapshot(name: String = TARGET_JOB) =
-    inactiveJob(name).snapshot()
+    inactiveJob(name)
 
 fun activeJobSnapshot(name: String = TARGET_JOB) =
-    activeJob(name).snapshot()
+    activeJob(name)
 
 fun runningJobSnapshot(name: String = TARGET_JOB) =
-    runningJob(name).snapshot()
+    runningJob(name)
 
 fun succeededJobSnapshot(name: String = TARGET_JOB) =
-    succeededJob(name).snapshot()
+    succeededJob(name)
 
 fun failedJobSnapshot(name: String = TARGET_JOB) =
-    failedJob(name).snapshot()
+    failedJob(name)
 
 
 // JOB
@@ -78,44 +77,44 @@ fun failedJob(name: String = TARGET_JOB) =
 
 // POD SNAPSHOT
 fun failedSnapshot(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 1): ActivePodSnapshot {
-    return failedPod(name, job, code).snapshot()
+    return failedPod(name, job, code)
 }
 
 fun successfulSnapshot(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 0): ActivePodSnapshot {
-    return successfulPod(name, job, code).snapshot()
+    return successfulPod(name, job, code)
 }
 
 fun runningSnapshot(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return runningPod(name, job).snapshot()
+    return runningPod(name, job)
 }
 
 fun waitingSnapshot(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return waitingPod(name, job).snapshot()
+    return waitingPod(name, job)
 }
 
 fun unknownSnapshot(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
-    return unknownPod(name, job).snapshot()
+    return unknownPod(name, job)
 }
 
 
 // POD
-fun failedPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 1): Pod {
+fun failedPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 1): ActivePodSnapshot {
     return newPod(name, "Failed", job, containerStateTerminated(code))
 }
 
-fun successfulPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 0): Pod {
+fun successfulPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 0): ActivePodSnapshot {
     return newPod(name, "Success", job, containerStateTerminated(code))
 }
 
-fun runningPod(name: String = TARGET_POD, job: String = TARGET_JOB): Pod {
+fun runningPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
     return newPod(name, "Running", job, containerStateRunning())
 }
 
-fun waitingPod(name: String = TARGET_POD, job: String = TARGET_JOB): Pod {
+fun waitingPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
     return newPod(name, "Pending", job, containerStateWaiting())
 }
 
-fun unknownPod(name: String = TARGET_POD, job: String = TARGET_JOB): Pod {
+fun unknownPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot {
     return newPod(name, "Pending", job, null)
 }
 
@@ -124,7 +123,7 @@ fun containerStateRunning(startedAt: String = "0000"): ContainerStateRunning = C
 fun containerStateTerminated(code: Int, reason: String = "", message: String = "", finishedAt: String = "1111"): ContainerStateTerminated =
     ContainerStateTerminated("", code, finishedAt, message, reason, 0, "")
 
-fun newPod(name: String, phase: String, job: String, state: KubernetesResource? = null): Pod {
+fun newPod(action: Action, name: String, phase: String, job: String, state: KubernetesResource? = null): ActivePodSnapshot {
     val meta = ObjectMetaBuilder()
         .withUid(name)
         .withName(name)
@@ -153,11 +152,17 @@ fun newPod(name: String, phase: String, job: String, state: KubernetesResource? 
         .withMetadata(meta)
         .withStatus(status)
         .build()
+        .snapshot(action)
 }
 
-fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null,
+fun newPod(name: String, phase: String, job: String, state: KubernetesResource? = null): ActivePodSnapshot{
+    return newPod(Action.NOOP, name, phase, job, state)
+}
+
+
+fun newJob(action: Action, name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null,
            conditions: List<String> = listOf()
-): Job {
+): ActiveJobSnapshot {
     val meta = ObjectMetaBuilder()
         .withUid(name)
         .withName(name)
@@ -173,8 +178,14 @@ fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? =
         .withMetadata(meta)
         .withStatus(status)
         .build()
+        .snapshot(action)
 }
 
+fun newJob(name: String, active: Int? = null, ready: Int? = null, failed: Int? = null, succeeded: Int? = null,
+           conditions: List<String> = listOf()
+): ActiveJobSnapshot {
+    return newJob(Action.NOOP, name, active, ready, failed, succeeded, conditions)
+}
 
 inline fun <reified T : Throwable> Throwable.assertError(match: (T) -> Unit) {
     Assertions.assertInstanceOf(T::class.java, this)
@@ -235,7 +246,7 @@ private fun parseJob(snapshot: String): ActiveJobSnapshot {
     val ready = parseIntOrNull(snapshot[1])
     val failed = parseIntOrNull(snapshot[2])
     val successful = parseIntOrNull(snapshot[3])
-    return newJob(TARGET_JOB, active, ready, failed, successful).snapshot()
+    return newJob(Action.NOOP, TARGET_JOB, active, ready, failed, successful)
 }
 
 /**
@@ -258,7 +269,7 @@ private fun parsePod(snapshot: String): ActivePodSnapshot {
         'T' -> containerStateTerminated(Integer.parseInt(containerStateString.substring(1)))
         else -> throw IllegalArgumentException("Unknown Container State for $containerStateString")
     }
-    return newPod(TARGET_POD, phase, TARGET_JOB, containerState).snapshot()
+    return newPod(TARGET_POD, phase, TARGET_JOB, containerState)
 }
 
 private fun parseIntOrNull(property: Char): Int?{
