@@ -9,12 +9,11 @@ import bachelor.service.api.snapshot.ActiveJobSnapshot
 import bachelor.service.api.snapshot.ActivePodSnapshot
 import bachelor.service.api.snapshot.RunningState
 import bachelor.service.api.snapshot.WaitingState
-import bachelor.service.config.fabric8.Fabric8ReactiveJobApi
 import bachelor.service.config.fabric8.reference
 import bachelor.service.config.fabric8.snapshot
 import bachelor.service.config.utils.BaseJobTemplateFiller
 import bachelor.service.config.utils.JobTemplateFileLoader
-import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.awaitility.Awaitility
@@ -28,15 +27,12 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class ReactiveFabric8ReactiveJobApiIT {
-
-    private val client = KubernetesClientBuilder()
-        .withConfig(ConfigBuilder().build()).build()
+abstract class AbstractReactiveJobApiIT(private val newJobApi: (String) -> ReactiveJobApi) {
+    private val helperClient = KubernetesClientBuilder().build()
 
     private val resolver = BaseJobTemplateFiller()
     private val jobSpecFile = "/template/job.yaml"
-    private val jobSpecProvider =
-        JobTemplateFileLoader(File(ReactiveFabric8ReactiveJobApiIT::class.java.getResource(jobSpecFile)!!.toURI()))
+    private val jobSpecProvider = JobTemplateFileLoader(File(DefaultKubernetesClientReactiveJobApiIT::class.java.getResource(jobSpecFile)!!.toURI()))
 
     private val namespace = "client-test"
     private val JOB_CREATED_TIMEOUT = 5L
@@ -48,18 +44,17 @@ class ReactiveFabric8ReactiveJobApiIT {
     private val POD_TERMINATED_TIMEOUT = 10L
     private val POD_DELETED_TIMEOUT = 10L
 
-
     private lateinit var api: ReactiveJobApi
 
     @BeforeEach
-    fun setup(){
-        api = Fabric8ReactiveJobApi(client, namespace)
+    fun setup() {
+        api = newJobApi(namespace)
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.startListeners()
     }
 
     @AfterEach
-    fun teardown(){
+    fun teardown() {
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.awaitNoPodsPresent()
         api.close()
@@ -77,6 +72,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         // wait until is done and verify no job available after ttl = 0 s + execution time = 1 s
         awaitUntilJobDoesNotExist(job)
     }
+
 
     @Test
     fun delete() {
@@ -120,7 +116,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -128,7 +124,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
         val podEvents = getPodEvents()
         val name = podEvents[0].element!!.name
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = name),
                 upd("Pending", name = name),
@@ -147,7 +143,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -156,7 +152,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
         val podEvents = getPodEvents()
         val name = podEvents[0].element!!.name
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = name),
                 upd("Pending", name = name),
@@ -178,7 +174,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -186,7 +182,7 @@ class ReactiveFabric8ReactiveJobApiIT {
             )
         )
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -209,7 +205,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -217,7 +213,7 @@ class ReactiveFabric8ReactiveJobApiIT {
             )
         )
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -242,7 +238,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -252,7 +248,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
 
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -278,7 +274,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsAtLeastElementsIn(
+        Truth.assertThat(events).containsAtLeastElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -287,7 +283,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
 
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -311,7 +307,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -324,7 +320,7 @@ class ReactiveFabric8ReactiveJobApiIT {
             )
         )
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -350,7 +346,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -366,7 +362,7 @@ class ReactiveFabric8ReactiveJobApiIT {
             )
         )
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -395,7 +391,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -409,7 +405,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
 
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -435,7 +431,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -452,7 +448,7 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
 
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
@@ -482,7 +478,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
         // verify
         val events = getJobEvents()
-        assertThat(events).containsExactlyElementsIn(
+        Truth.assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
@@ -490,12 +486,16 @@ class ReactiveFabric8ReactiveJobApiIT {
         )
 
         val podEvents = getPodEvents()
-        assertThat(podEvents).containsExactlyElementsIn(
+        Truth.assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add("Pending", name = pod.name),
                 upd("Pending", name = pod.name),
                 upd("Pending", containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd("Pending", containerStateWaiting("ErrImagePull", podEvents[3].getWaitingMessage()), name = pod.name),
+                upd(
+                    "Pending",
+                    containerStateWaiting("ErrImagePull", podEvents[3].getWaitingMessage()),
+                    name = pod.name
+                ),
             )
         )
     }
@@ -508,7 +508,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
     private fun ResourceEvent<ActivePodSnapshot>.getWaitingMessage(): String {
         val state = element?.mainContainerState
-        if (state is WaitingState){
+        if (state is WaitingState) {
             return state.message
         }
         return ""
@@ -516,7 +516,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
     private fun ResourceEvent<ActivePodSnapshot>.getRunningStartedAt(): String {
         val state = element?.mainContainerState
-        if (state is RunningState){
+        if (state is RunningState) {
             return state.startedAt
         }
         return ""
@@ -529,7 +529,12 @@ class ReactiveFabric8ReactiveJobApiIT {
     }
 
 
-    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean = false): JobReference {
+    private fun ReactiveJobApi.createAndAwaitUntilJobCreated(
+        executionTime: Long,
+        ttl: Long,
+        exitCode: Int = 0,
+        fail: Boolean = false
+    ): JobReference {
         val job = create(resolveSpec(executionTime, ttl, exitCode, fail)).block()!!
         Awaitility.await()
             .atMost(Duration.ofSeconds(JOB_CREATED_TIMEOUT))
@@ -545,7 +550,13 @@ class ReactiveFabric8ReactiveJobApiIT {
         return pod.get()
     }
 
-    private fun JobReference.awaitUntilMatches(timeout: Long, active: Int?, ready: Int?, failed: Int?, succeeded: Int?) {
+    private fun JobReference.awaitUntilMatches(
+        timeout: Long,
+        active: Int?,
+        ready: Int?,
+        failed: Int?,
+        succeeded: Int?
+    ) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(timeout))
             .until { jobExists(this, active, ready, failed, succeeded) }
@@ -564,12 +575,12 @@ class ReactiveFabric8ReactiveJobApiIT {
     }
 
     private fun podIsTerminated(ref: PodReference): Boolean {
-        val pod = client.pods().inNamespace(ref.namespace).withName(ref.name).get()
+        val pod = helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
         return pod.status.containerStatuses[0].state.terminated != null
     }
 
     private fun podIsReady(ref: PodReference): Boolean {
-        val pod = client.pods().inNamespace(ref.namespace).withName(ref.name).get()
+        val pod = helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
         return pod.status.containerStatuses[0].state.let {
             it.running != null || it.terminated != null
         }
@@ -581,13 +592,14 @@ class ReactiveFabric8ReactiveJobApiIT {
             .atMost(Duration.ofSeconds(JOB_DELETED_TIMEOUT))
             .until { !jobExists(job) }
     }
-    private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent(){
+
+    private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent() {
         getJobs().forEach {
             deleteAndAwaitUntilJobDeleted(it)
         }
     }
 
-    private fun ReactiveJobApi.awaitNoPodsPresent(timeout: Long = POD_DELETED_TIMEOUT){
+    private fun ReactiveJobApi.awaitNoPodsPresent(timeout: Long = POD_DELETED_TIMEOUT) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(timeout))
             .until { getPods().isEmpty() }
@@ -608,15 +620,15 @@ class ReactiveFabric8ReactiveJobApiIT {
         name == TARGET_JOB && name == this.name && uid == this.uid
 
     private fun JobReference.matches(active: Int?, ready: Int?, failed: Int?, succeeded: Int?): Boolean {
-        val job = client.batch().v1().jobs().inNamespace(namespace).withName(name).get()
-        println("FOUND: ${job.snapshot(Action.UPDATE)}")
+        val job = helperClient.batch().v1().jobs().inNamespace(namespace).withName(name).get()
+        println("FOUND: ${job.snapshot(Action.NOOP)}")
         return job.status.let {
             it.active == active && it.ready == ready && it.succeeded == succeeded && it.failed == failed
         }
     }
 
     private fun getJobs(): List<JobReference> {
-        return client.batch().v1().jobs().inNamespace(namespace)
+        return helperClient.batch().v1().jobs().inNamespace(namespace)
             .list()
             .items
             .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
@@ -628,7 +640,7 @@ class ReactiveFabric8ReactiveJobApiIT {
 
 
     private fun getPods(): List<PodReference> {
-        return client.pods().inNamespace(namespace)
+        return helperClient.pods().inNamespace(namespace)
             .list()
             .items
             .map { it.reference() }
@@ -660,5 +672,3 @@ class ReactiveFabric8ReactiveJobApiIT {
         return if (this) 1 else 0
     }
 }
-
-
