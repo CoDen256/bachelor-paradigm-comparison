@@ -4,18 +4,17 @@ import bachelor.core.impl.api.fabric8.Fabric8ReactiveJobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.executor.reactive.ReactiveJobExecutor
-import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
 
 
+const val NAMESPACE = "executor-test"
+
 class JobExecutionRunner {
 
-
-    private val client = KubernetesClientBuilder()
-        .withConfig(ConfigBuilder().build()).build()
+    private val client = KubernetesClientBuilder().build()
 
     private val api = Fabric8ReactiveJobApi(client, "calculations")
 

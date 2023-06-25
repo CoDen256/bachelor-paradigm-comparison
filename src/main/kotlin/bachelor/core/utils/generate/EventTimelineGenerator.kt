@@ -4,7 +4,7 @@ import bachelor.core.api.snapshot.*
 import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
 
-
+// TODO: extract to class, with field containing job and pod name
 /**
  * Timeline parser parses timeline of events, like
  * - |A(nnnn)|U(10nn)|-------|-------|U(11nn)|--------|U(10nn)|-------|U(n0n1)|D(n0n1)|-------|-------|

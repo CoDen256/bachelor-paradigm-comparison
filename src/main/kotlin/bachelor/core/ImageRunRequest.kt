@@ -28,7 +28,7 @@ data class ImageRunRequest(
 ) {
 
     override fun toString(): String {
-        return "$name:$image/[$arguments]"
+        return "$name|$image$arguments"
     }
 
 }

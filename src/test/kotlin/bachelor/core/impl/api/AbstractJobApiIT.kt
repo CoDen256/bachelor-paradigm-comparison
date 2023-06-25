@@ -5,6 +5,7 @@ import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.impl.api.fabric8.reference
 import bachelor.core.utils.generate.*
+import bachelor.createNamespace
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.resolveSpec
 import com.google.common.truth.Truth.assertThat
@@ -570,7 +571,7 @@ abstract class AbstractJobApiIT(
     // HELPER KUBERNETES CLIENT TO VERIFY ACTUAL STATE ON THE KUBERNETES CLUSTER
     private fun createHelperClient(): KubernetesClient {
         return KubernetesClientBuilder().build().apply {
-            createNamespace()
+            createNamespace(NAMESPACE)
         }
     }
 
@@ -610,13 +611,4 @@ abstract class AbstractJobApiIT(
     private fun getPod(ref: PodReference): Pod =
         helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
 
-    private fun KubernetesClient.createNamespace() {
-        val namespace = NamespaceBuilder()
-            .withMetadata(
-                ObjectMetaBuilder()
-                    .withName(NAMESPACE)
-                    .build()
-            ).build()
-        resource(namespace).createOrReplace()
-    }
 }

@@ -8,12 +8,14 @@ import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.core.utils.generate.DelayedEmitterBuilder
 import bachelor.core.utils.generate.TARGET_JOB
+import io.fabric8.kubernetes.api.model.NamespaceBuilder
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder
+import io.fabric8.kubernetes.client.KubernetesClient
 import org.junit.jupiter.api.Assertions
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.io.File
 import java.time.Duration
-import javax.swing.text.html.HTML.Attribute.CODE
 
 
 inline fun <reified T : Throwable> Throwable.assertError(match: (T) -> Unit) {
@@ -58,6 +60,8 @@ fun resolveSpec(executionTime: Long, ttl: Long, exitCode: Int = 0, fail: Boolean
     ).also { println(it) }
 }
 
-fun Boolean.toInt(): Int {
-    return if (this) 1 else 0
+fun KubernetesClient.createNamespace(namespaceName: String) {
+    val namespace = NamespaceBuilder()
+        .withMetadata(ObjectMetaBuilder().withName(namespaceName).build()).build()
+    resource(namespace).createOrReplace()
 }
