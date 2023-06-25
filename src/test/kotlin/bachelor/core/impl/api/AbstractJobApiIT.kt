@@ -2,6 +2,7 @@ package bachelor.core.impl.api
 
 import bachelor.*
 import bachelor.core.api.JobApi
+import bachelor.core.api.ResourceEventListener
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.utils.generate.*
@@ -22,11 +23,18 @@ abstract class AbstractJobApiIT(
     private val helper = createHelperClient()
     private lateinit var api: JobApi
 
-    @BeforeEach
+    @Test
     fun setup() {
         api = newJobApi(NAMESPACE)
-        api.deleteAllJobsAndAwaitNoJobsPresent()
-        api.startListeners()
+//        api.deleteAllJobsAndAwaitNoJobsPresent()
+//        api.startListeners()
+        api.addPodListener(object : ResourceEventListener<ActivePodSnapshot>{
+            override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
+                println(event)
+            }
+
+        })
+        api.stopListeners()
     }
 
     @AfterEach
@@ -40,7 +48,8 @@ abstract class AbstractJobApiIT(
 
     @Test
     fun create() {
-        val job = api.createAndAwaitUntilJobCreated(0, 0)
+        api = newJobApi(NAMESPACE)
+        val job = api.createAndAwaitUntilJobCreated(1000, 0)
 
         helper.awaitUntilPodCreated(job, NAMESPACE)
 

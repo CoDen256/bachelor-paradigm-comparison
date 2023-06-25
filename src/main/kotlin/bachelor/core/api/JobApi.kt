@@ -1,10 +1,7 @@
 package bachelor.core.api
 
+import bachelor.core.api.snapshot.*
 import bachelor.executor.reactive.ResourceEvent
-import bachelor.core.api.snapshot.JobReference
-import bachelor.core.api.snapshot.PodReference
-import bachelor.core.api.snapshot.ActiveJobSnapshot
-import bachelor.core.api.snapshot.ActivePodSnapshot
 import reactor.core.publisher.Flux
 
 /**
@@ -12,6 +9,11 @@ import reactor.core.publisher.Flux
  * Kubernetes Jobs, Pods and observing events regarding Jobs and Pods within a namespace
  */
 interface JobApi : AutoCloseable {
+
+    fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>)
+    fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>)
+
+    fun removeListener(listener: ResourceEventListener<out Snapshot>)
 
     /**
      * Starts the client and listening for the events. MUST be called only

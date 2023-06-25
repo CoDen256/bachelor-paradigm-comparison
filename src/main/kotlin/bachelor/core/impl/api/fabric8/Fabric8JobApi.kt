@@ -1,14 +1,8 @@
 package bachelor.core.impl.api.fabric8
 
+import bachelor.core.api.*
+import bachelor.core.api.snapshot.*
 import bachelor.executor.reactive.ResourceEvent
-import bachelor.core.api.InvalidJobSpecException
-import bachelor.core.api.JobAlreadyExistsException
-import bachelor.core.api.JobApi
-import bachelor.core.api.ReactiveJobApi
-import bachelor.core.api.snapshot.JobReference
-import bachelor.core.api.snapshot.PodReference
-import bachelor.core.api.snapshot.ActiveJobSnapshot
-import bachelor.core.api.snapshot.ActivePodSnapshot
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.client.KubernetesClient
@@ -44,6 +38,17 @@ class Fabric8JobApi(
     private var informersStarted = AtomicBoolean()
     private var jobInformer: SharedIndexInformer<Job>? = null
     private var podInformer: SharedIndexInformer<Pod>? = null
+    override fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
+        TODO("Not yet implemented")
+    }
+
+    override fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+        TODO("Not yet implemented")
+    }
+
+    override fun removeListener(listener: ResourceEventListener<out Snapshot>) {
+        TODO("Not yet implemented")
+    }
 
     override fun startListeners() {
         if (informersStarted.compareAndSet(false, true)) {
