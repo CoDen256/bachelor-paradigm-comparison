@@ -4,14 +4,19 @@ import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.executor.JobExecutor
+import bachelor.core.executor.PodNotRunningTimeoutException
+import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.executor.PodTerminatedWithErrorException
 import bachelor.core.impl.api.fabric8.Fabric8ReactiveJobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.core.utils.generate.TARGET_JOB
+import bachelor.core.utils.generate.running
 import bachelor.core.utils.generate.terminated
+import bachelor.core.utils.generate.waiting
 import bachelor.createNamespace
 import bachelor.executor.reactive.Action
+import bachelor.executor.reactive.Action.ADD
 import bachelor.executor.reactive.Action.UPDATE
 import bachelor.executor.reactive.ReactiveJobExecutor
 import bachelor.getJobs
@@ -19,6 +24,7 @@ import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import reactor.core.publisher.Mono
 import java.io.File
 import java.time.Duration
@@ -52,11 +58,11 @@ class ReactiveJobExecutionIT {
 
 
     @Test
-    fun successful_quick() {
+    fun successful_shortExecution() {
         api.startListeners()
 
         val result = runner.run(
-            10L, 10L,
+            10L, 11L,
             0, 0,
              10
         )
@@ -76,11 +82,11 @@ class ReactiveJobExecutionIT {
     }
 
     @Test
-    fun successful_long() {
+    fun successful_longExecution() {
         api.startListeners()
 
         val result = runner.run(
-            20L, 20L,
+            10L, 11L,
             3, 0,
             20
         )
@@ -100,12 +106,12 @@ class ReactiveJobExecutionIT {
     }
 
     @Test
-    fun failed_quick() {
+    fun failed_shortExecution() {
         api.startListeners()
 
         val result = try {
             runner.run(
-                10L, 10L,
+                10L, 11L,
                 0, 3,
                 10
             )
@@ -129,12 +135,12 @@ class ReactiveJobExecutionIT {
     }
 
     @Test
-    fun failed_long() {
+    fun failed_longExecution() {
         api.startListeners()
 
         val result = try {
             runner.run(
-                20L, 20L,
+                10L, 11L,
                 3, 3,
                 20
             )
@@ -146,7 +152,7 @@ class ReactiveJobExecutionIT {
         val (podName, podUid, jobUid) = podRef(result)
         val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
         val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, terminated(3, "Error"))
-        val expectedLogs = Logs("start\nslept 0\nend\n")
+        val expectedLogs = Logs("start\nslept 3\nend\n")
 
 
         assertNoJobPresent()
@@ -158,6 +164,174 @@ class ReactiveJobExecutionIT {
         api.stopListeners()
     }
 
+    @Test
+    fun activeDeadlineSecondsTimeout_quick() {
+        api.startListeners()
+
+        val result = try {
+            runner.run(
+                1, 2,
+                0, 3,
+                0
+            )
+        }catch (ex: PodNotRunningTimeoutException){
+            ex.currentState
+        }
+
+
+        val (_, uid) = jobRef(result)
+        val expectedJob = job(uid, UPDATE, null, 0, null, null, listOf("Failed"))
+        val expectedPod = InitialPodSnapshot
+        val expectedLogs = Logs.empty()
+
+        assertNoJobPresent()
+
+        assertEquals(expectedJob, result.jobSnapshot)
+        assertEquals(expectedPod, result.podSnapshot)
+        assertEquals(expectedLogs, result.logs)
+
+        api.stopListeners()
+    }
+
+    @Test
+    fun notTerminatedTimeout() {
+        api.startListeners()
+
+
+        val result = assertThrows<PodNotTerminatedTimeoutException> {
+            runner.run(
+                4, 4,
+                10, 0,
+                100
+            )
+        }.currentState
+
+        val (podName, podUid, jobUid) = podRef(result)
+        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
+        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, running((podState(result) as RunningState).startedAt))
+        val expectedLogs = Logs("start\n")
+
+        assertNoJobPresent()
+
+        assertEquals(expectedJob, result.jobSnapshot)
+        assertEquals(expectedPod, result.podSnapshot)
+        assertEquals(expectedLogs, result.logs)
+
+        api.stopListeners()
+    }
+
+    @Test
+    fun notTerminatedTimeout_tooLow() {
+        api.startListeners()
+
+
+        val result = assertThrows<PodNotTerminatedTimeoutException> {
+            runner.run(
+                10, 0,
+                0, 0,
+                100
+            )
+        }.currentState
+
+        val (_, uid) = jobRef(result)
+        val expectedJob = job(uid, UPDATE, 1, 0, null, null)
+        val expectedPod = InitialPodSnapshot
+        val expectedLogs = Logs.empty()
+
+        assertNoJobPresent()
+
+        assertEquals(expectedJob, result.jobSnapshot)
+        assertEquals(expectedPod, result.podSnapshot)
+        assertEquals(expectedLogs, result.logs)
+
+        api.stopListeners()
+    }
+
+    @Test
+    fun notRunningTimeout() {
+        api.startListeners()
+
+
+        val result = assertThrows<PodNotRunningTimeoutException> {
+            runner.run(
+                4, 10,
+                0, 0,
+                100,
+                failToStart = true
+            )
+        }.currentState
+
+        val (podName, podUid, jobUid) = podRef(result)
+        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
+        val expectedPod = pod(podName, podUid, jobUid, UPDATE, PENDING, waiting("ErrImagePull", (podState(result) as WaitingState).message))
+        val expectedLogs = Logs.empty()
+
+        assertNoJobPresent()
+
+        assertEquals(expectedJob, result.jobSnapshot)
+        assertEquals(expectedPod, result.podSnapshot)
+        assertEquals(expectedLogs, result.logs)
+
+        api.stopListeners()
+    }
+
+    @Test
+    fun notRunningTimeout_tooLow() {
+        api.startListeners()
+
+
+        val result = assertThrows<PodNotRunningTimeoutException> {
+            runner.run(
+                0, 10,
+                0, 0,
+                100
+            )
+        }.currentState
+
+        val (_, uid) = jobRef(result)
+        val expectedJob = job(uid, ADD, null, null, null, null)
+        val expectedPod = InitialPodSnapshot
+        val expectedLogs = Logs.empty()
+
+        assertNoJobPresent()
+
+        assertEquals(expectedJob, result.jobSnapshot)
+        assertEquals(expectedPod, result.podSnapshot)
+        assertEquals(expectedLogs, result.logs)
+
+        api.stopListeners()
+    }
+
+//    @Test
+//    fun activeDeadlineSecondsTimeout_long() {
+//        api.startListeners()
+//
+//        val result = try {
+//            runner.runForLoop(
+//                8, 5,
+//                20, 0,
+//                2
+//            )
+//        }catch (ex: PodNotTerminatedTimeoutException){
+//            ex.currentState
+//        }
+//
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, null, 0, 1, null, listOf("Failed")) // Job was active longer than specified deadline, reason:DeadlineExceeded
+//        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, running((podState(result) as RunningState).startedAt))
+//        val expectedLogs = Logs("start\n")
+//
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+
     private fun assertNoJobPresent() {
         assertTrue(helper.getJobs(namespace).isEmpty())
     }
@@ -166,34 +340,46 @@ class ReactiveJobExecutionIT {
         return (result.podSnapshot as ActivePodSnapshot).reference()
     }
 
+    private fun podState(result: ExecutionSnapshot): ContainerState {
+        return (result.podSnapshot as ActivePodSnapshot).mainContainerState
+    }
+
+    private fun jobRef(result: ExecutionSnapshot): JobReference {
+        return (result.jobSnapshot as ActiveJobSnapshot).reference()
+    }
+
     private fun KubernetesBasedImageRunner.run(
         runningTimeout: Long,
         terminatedTimeout: Long,
         executionTime: Long,
         exitCode: Int,
-        activeDeadlineSeconds: Long
+        activeDeadlineSeconds: Long,
+        failToStart: Boolean = false
     ): ExecutionSnapshot {
         return run(
             runningTimeout,
             terminatedTimeout,
             99999, // just to be sure, that job is deleted by the runner, not by ttl
             activeDeadlineSeconds,
+            failToStart,
             "echo start && sleep $executionTime && echo slept $executionTime && echo end && exit $exitCode"
         ).block()!!
     }
+
 
     private fun KubernetesBasedImageRunner.run(
         runningTimeout: Long,
         terminatedTimeout: Long,
         ttl: Long,
         activeDeadlineSeconds: Long,
+        failToRun: Boolean,
         vararg arguments: String
     ): Mono<ExecutionSnapshot> {
         return run(
             ImageRunRequest(
                 JOB_NAME,
                 namespace,
-                "busybox:latest",
+                "busybox${ if (failToRun) "fail" else ""}:latest",
                 "/bin/sh",
                 ttl,
                 activeDeadlineSeconds,

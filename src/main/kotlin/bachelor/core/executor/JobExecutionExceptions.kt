@@ -33,3 +33,4 @@ class PodNotTerminatedTimeoutException(val currentState: ExecutionSnapshot, time
 class PodTerminatedWithErrorException(val currentState: ExecutionSnapshot, exitCode: Int) :
     ClientException("The pod has terminated with a NON-ZERO RETURN CODE:" +
             " $exitCode\n${prettyString(currentState)}")
+

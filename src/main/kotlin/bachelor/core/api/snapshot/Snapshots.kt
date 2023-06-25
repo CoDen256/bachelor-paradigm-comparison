@@ -69,7 +69,7 @@ data class JobCondition(val status: String, val message: String, val type: Strin
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is JobCondition) return false
-
+        // TODO: verify message?
         if (status != other.status) return false
         return type == other.type
     }
