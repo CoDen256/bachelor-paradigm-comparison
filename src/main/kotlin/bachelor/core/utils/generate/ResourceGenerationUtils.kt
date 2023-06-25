@@ -43,18 +43,19 @@ fun newJob(
 )
 
 
+
 // POD
 fun failedPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 1): ActivePodSnapshot =
-    newPod(name, Phase.FAILED, job, containerStateTerminated(code))
+    newPod(name, Phase.FAILED, job, terminated(code))
 
 fun successfulPod(name: String = TARGET_POD, job: String = TARGET_JOB, code: Int = 0): ActivePodSnapshot =
-    newPod(name, Phase.SUCCEEDED, job, containerStateTerminated(code))
+    newPod(name, Phase.SUCCEEDED, job, terminated(code))
 
 fun runningPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot =
-    newPod(name, Phase.RUNNING, job, containerStateRunning())
+    newPod(name, Phase.RUNNING, job, running())
 
 fun waitingPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot =
-    newPod(name, Phase.PENDING, job, containerStateWaiting())
+    newPod(name, Phase.PENDING, job, waiting())
 
 fun unknownPod(name: String = TARGET_POD, job: String = TARGET_JOB): ActivePodSnapshot =
     newPod(name, Phase.PENDING, job, UnknownState)
@@ -67,9 +68,9 @@ fun newPod(action: Action, name: String, phase: Phase, job: String, state: Conta
     ActivePodSnapshot(name, name, "", job, state, phase, action.name)
 
 
-fun containerStateWaiting(reason: String = "", message: String = "") =
+fun waiting(reason: String = "", message: String = "") =
     WaitingState(reason, message)
-fun containerStateRunning(startedAt: String = "0000") =
+fun running(startedAt: String = "0000") =
     RunningState(startedAt)
-fun containerStateTerminated(code: Int, reason: String = "", message: String = "") =
+fun terminated(code: Int, reason: String = "", message: String = "") =
     TerminatedState(reason, message, code)

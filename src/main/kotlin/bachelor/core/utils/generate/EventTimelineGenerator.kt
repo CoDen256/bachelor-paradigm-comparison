@@ -57,9 +57,9 @@ private fun parsePod(snapshot: String, action: Action): ActivePodSnapshot {
     val containerStateString = split[1]
     val containerState = when(containerStateString[0]){
         'U' -> UnknownState
-        'W' -> containerStateWaiting()
-        'R' -> containerStateRunning()
-        'T' -> containerStateTerminated(Integer.parseInt(containerStateString.substring(1)))
+        'W' -> waiting()
+        'R' -> running()
+        'T' -> terminated(Integer.parseInt(containerStateString.substring(1)))
         else -> throw IllegalArgumentException("Unknown Container State for $containerStateString")
     }
     return newPod(action, TARGET_POD, phase, TARGET_JOB, containerState)

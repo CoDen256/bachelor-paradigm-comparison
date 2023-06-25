@@ -1,50 +1,29 @@
 package bachelor.core.impl.api
 
+import bachelor.*
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
-import bachelor.core.impl.api.fabric8.reference
-import bachelor.core.impl.template.BaseJobTemplateFiller
-import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.core.utils.generate.*
-import bachelor.createNamespace
 import bachelor.executor.reactive.ResourceEvent
-import bachelor.resolveSpec
 import com.google.common.truth.Truth.assertThat
-import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
-import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.io.File
-import java.time.Duration
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 
 const val NAMESPACE = "client-test"
 
-const val JOB_CREATED_TIMEOUT = 5L
-const val JOB_DELETED_TIMEOUT = 5L
-const val JOB_DONE_TIMEOUT = 20L
-
-const val POD_CREATED_TIMEOUT = 5L
-const val POD_READY_TIMEOUT = 5L
-const val POD_TERMINATED_TIMEOUT = 10L
-const val POD_DELETED_TIMEOUT = 10L
 
 abstract class AbstractReactiveJobApiIT(
     private val newJobApi: (String) -> ReactiveJobApi
 ) {
-    private val helperClient = createHelperClient()
-
-    private val resolver = BaseJobTemplateFiller()
-    private val jobSpecFile = "/template/job.yaml"
-    private val jobSpecProvider = JobTemplateFileLoader(File(this::class.java.getResource(jobSpecFile)!!.toURI()))
+    private val helper = createHelperClient()
 
     private lateinit var api: ReactiveJobApi
 
@@ -59,7 +38,7 @@ abstract class AbstractReactiveJobApiIT(
     @AfterEach
     fun teardown() {
         api.deleteAllJobsAndAwaitNoJobsPresent()
-        awaitNoPodsPresent()
+        helper.awaitNoPodsPresent(NAMESPACE)
         api.close()
         api.collectJobEvents()
         api.collectPodEvents()
@@ -69,10 +48,10 @@ abstract class AbstractReactiveJobApiIT(
     fun create() {
         val job = api.createAndAwaitUntilJobCreated(0, 0)
 
-        awaitUntilPodCreated(job)
+        helper.awaitUntilPodCreated(job, NAMESPACE)
 
         // wait until is done and verify no job available after ttl = 0 s + execution time = 1 s
-        awaitUntilJobDoesNotExist(job)
+        helper.awaitUntilJobDoesNotExist(job, NAMESPACE)
     }
 
 
@@ -86,9 +65,9 @@ abstract class AbstractReactiveJobApiIT(
     @Test
     fun getLogsContains() {
         val job = api.createAndAwaitUntilJobCreated(2, 20)
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
-        awaitUntilPodReady(job)
+        helper.awaitUntilPodReady(job, NAMESPACE)
 
         val logs = api.collectLogs(pod)
         assertContains(logs, "start\n")
@@ -97,9 +76,9 @@ abstract class AbstractReactiveJobApiIT(
     @Test
     fun getLogs() {
         val job = api.createAndAwaitUntilJobCreated(0, 20)
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
-        awaitUntilPodTerminated(job)
+        helper.awaitUntilPodTerminated(job, NAMESPACE)
 
         val logs = api.collectLogs(pod)
         assertEquals(logs, "start\nslept 0\nend\n")
@@ -131,7 +110,7 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = name),
                 upd(PENDING, name = name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
+                upd(PENDING, waiting("ContainerCreating"), name = name),
             )
         )
     }
@@ -159,9 +138,9 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = name),
                 upd(PENDING, name = name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = name),
+                upd(PENDING, waiting("ContainerCreating"), name = name),
+                upd(PENDING, waiting("ContainerCreating"), name = name),
+                upd(PENDING, waiting("ContainerCreating"), name = name),
             )
         )
     }
@@ -170,7 +149,7 @@ abstract class AbstractReactiveJobApiIT(
     fun events_HighExecutionTime_CreateAwaitUntilPodCreatedDelete() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(1, 0) // execution time 1, waiting will NOT be skipped
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
         api.deleteAndAwaitUntilJobDeleted(job)
 
         api.stopListeners() // emits complete
@@ -189,9 +168,9 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
             )
         )
     }
@@ -200,8 +179,8 @@ abstract class AbstractReactiveJobApiIT(
     fun events_HighExecutionTime_CreateAwaitUntilPodReadyDelete() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(2, 0) // execution time 2, running will be present
-        val pod = awaitUntilPodCreated(job)
-        awaitUntilPodReady(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
+        helper.awaitUntilPodReady(job, NAMESPACE)
         api.deleteAndAwaitUntilJobDeleted(job)
 
         api.stopListeners() // emits complete
@@ -220,10 +199,10 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd(RUNNING, containerStateRunning(podEvents[4].getRunningStartedAt()), name = pod.name),
-                upd(RUNNING, containerStateRunning(podEvents[5].getRunningStartedAt()), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(RUNNING, running(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, running(podEvents[4].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, running(podEvents[5].getRunningStartedAt()), name = pod.name),
             )
         )
     }
@@ -232,9 +211,9 @@ abstract class AbstractReactiveJobApiIT(
     fun events_HighExecutionTime_CreateAwaitUntilPodTerminatedDelete() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(2, 0) // execution time 2, running will NOT be skipped
-        val pod = awaitUntilPodCreated(job)
-        awaitUntilPodReady(job)
-        awaitUntilPodTerminated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
+        helper.awaitUntilPodReady(job, NAMESPACE)
+        helper.awaitUntilPodTerminated(job, NAMESPACE)
         api.deleteAndAwaitUntilJobDeleted(job)
 
         api.stopListeners() // emits complete
@@ -255,11 +234,11 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(RUNNING, running(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, terminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, terminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, terminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -268,9 +247,9 @@ abstract class AbstractReactiveJobApiIT(
     fun events_CreateAwaitUntilPodTerminatedDelete() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(0, 0) // execution time 0, running will be skipped
-        val pod = awaitUntilPodCreated(job)
-        awaitUntilPodReady(job)
-        awaitUntilPodTerminated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
+        helper.awaitUntilPodReady(job, NAMESPACE)
+        helper.awaitUntilPodTerminated(job, NAMESPACE)
         api.deleteAndAwaitUntilJobDeleted(job)
 
         api.stopListeners() // emits complete
@@ -290,10 +269,10 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, terminated(0, "Completed"), name = pod.name),
+                upd(PENDING, terminated(0, "Completed"), name = pod.name),
+                upd(PENDING, terminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -302,9 +281,9 @@ abstract class AbstractReactiveJobApiIT(
     fun events_CreateAwaitUntilJobDoneAndRemoved() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(0, 0) // execution time 0, running will be skipped
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
-        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+        helper.awaitUntilJobDoesNotExist(job, NAMESPACE) // wait until job is done and deleted
 
         api.stopListeners() // emits complete
 
@@ -327,12 +306,12 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(PENDING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                del(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, terminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
+                del(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -341,9 +320,9 @@ abstract class AbstractReactiveJobApiIT(
     fun events_HighExecutionTime_CreateAwaitUntilJobDoneAndRemoved() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(2, 0) // execution time 2, running will NOT be skipped
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
-        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+        helper.awaitUntilJobDoesNotExist(job, NAMESPACE) // wait until job is done and deleted
 
         api.stopListeners() // emits complete
 
@@ -369,15 +348,15 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
 
-                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, running(podEvents[3].getRunningStartedAt()), name = pod.name),
 
-                upd(RUNNING, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                upd(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
-                del(SUCCEEDED, containerStateTerminated(0, "Completed"), name = pod.name),
+                upd(RUNNING, terminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
+                upd(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
+                del(SUCCEEDED, terminated(0, "Completed"), name = pod.name),
             )
         )
     }
@@ -386,9 +365,9 @@ abstract class AbstractReactiveJobApiIT(
     fun events_CreateAwaitUntilJobFailedAndRemoved() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(0, 0, 3) // execution time 0, running WILL be skipped
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
-        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+        helper.awaitUntilJobDoesNotExist(job, NAMESPACE) // wait until job is done and deleted
 
         api.stopListeners() // emits complete
 
@@ -412,12 +391,12 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
-                upd(PENDING, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                del(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, terminated(3, "Error"), name = pod.name),
+                upd(FAILED, terminated(3, "Error"), name = pod.name),
+                upd(FAILED, terminated(3, "Error"), name = pod.name),
+                upd(FAILED, terminated(3, "Error"), name = pod.name),
+                del(FAILED, terminated(3, "Error"), name = pod.name),
             )
         )
     }
@@ -426,9 +405,9 @@ abstract class AbstractReactiveJobApiIT(
     fun events_HighExecutionTime_CreateAwaitUntilJobFailedAndRemoved() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(2, 0, 3) // execution time 0, running will NOT be skipped
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
-        awaitUntilJobDoesNotExist(job) // wait until job is done and deleted
+        helper.awaitUntilJobDoesNotExist(job, NAMESPACE) // wait until job is done and deleted
 
         api.stopListeners() // emits complete
 
@@ -455,15 +434,15 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
 
-                upd(RUNNING, containerStateRunning(podEvents[3].getRunningStartedAt()), name = pod.name),
-                upd(RUNNING, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(RUNNING, running(podEvents[3].getRunningStartedAt()), name = pod.name),
+                upd(RUNNING, terminated(3, "Error"), name = pod.name),
 
-                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                upd(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
-                del(FAILED, containerStateTerminated(3, "Error"), name = pod.name),
+                upd(FAILED, terminated(3, "Error"), name = pod.name),
+                upd(FAILED, terminated(3, "Error"), name = pod.name),
+                upd(FAILED, terminated(3, "Error"), name = pod.name),
+                del(FAILED, terminated(3, "Error"), name = pod.name),
             )
         )
     }
@@ -473,7 +452,7 @@ abstract class AbstractReactiveJobApiIT(
     fun events_CreateAwaitUntilJobDidNotStartAndRemoved() {
         // execute
         val job = api.createAndAwaitUntilJobCreated(0, 0, fail = true)
-        val pod = awaitUntilPodCreated(job)
+        val pod = helper.awaitUntilPodCreated(job, NAMESPACE)
 
         Thread.sleep(5000)
 
@@ -493,10 +472,10 @@ abstract class AbstractReactiveJobApiIT(
             listOf(
                 add(PENDING, name = pod.name),
                 upd(PENDING, name = pod.name),
-                upd(PENDING, containerStateWaiting("ContainerCreating"), name = pod.name),
+                upd(PENDING, waiting("ContainerCreating"), name = pod.name),
                 upd(
                     PENDING,
-                    containerStateWaiting("ErrImagePull", podEvents[3].getWaitingMessage()),
+                    waiting("ErrImagePull", podEvents[3].getWaitingMessage()),
                     name = pod.name
                 ),
             )
@@ -522,20 +501,20 @@ abstract class AbstractReactiveJobApiIT(
         exitCode: Int = 0,
         fail: Boolean = false
     ): JobReference {
-        val job = create(resolveSpec( executionTime, ttl, exitCode, fail)).block()!!
-        awaitUntilJobCreated(job)
+        val job = create(resolveSpec(executionTime, ttl, exitCode, fail, NAMESPACE)).block()!!
+        helper.awaitUntilJobCreated(job, NAMESPACE)
         return job
     }
 
     private fun ReactiveJobApi.collectLogs(pod: PodReference) = getLogs(pod).block()!!
 
     private fun ReactiveJobApi.deleteAllJobsAndAwaitNoJobsPresent() {
-        getJobs().forEach { deleteAndAwaitUntilJobDeleted(it) }
+        helper.getJobs(NAMESPACE).forEach { deleteAndAwaitUntilJobDeleted(it) }
     }
 
     private fun ReactiveJobApi.deleteAndAwaitUntilJobDeleted(job: JobReference, timeout: Long = JOB_DELETED_TIMEOUT) {
         delete(job)
-        awaitUntilJobDoesNotExist(job, timeout)
+        helper.awaitUntilJobDoesNotExist(job, NAMESPACE, timeout)
     }
 
     private fun ReactiveJobApi.collectPodEvents(): MutableList<ResourceEvent<ActivePodSnapshot>> =
@@ -545,93 +524,10 @@ abstract class AbstractReactiveJobApiIT(
         jobEvents().collectList().block()!!.onEach { println(it) }
 
 
-    // AWAITILITY HELPER METHODS
-    private fun awaitUntilJobCreated(job: JobReference, timeout: Long = JOB_CREATED_TIMEOUT) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { jobExists(job) }
-    }
-
-    private fun awaitUntilJobDoesNotExist(job: JobReference, timeout: Long = JOB_DONE_TIMEOUT) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { !jobExists(job) }
-    }
-
-    private fun awaitUntilPodCreated(job: JobReference, timeout: Long = POD_CREATED_TIMEOUT): PodReference {
-        val pod = AtomicReference<PodReference>()
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { findPod(job)?.let { pod.set(it) } != null }
-        return pod.get()
-    }
-
-    private fun awaitUntilPodReady(job: JobReference, timeout: Long = POD_READY_TIMEOUT) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { podIsReady(findPod(job)!!) }
-    }
-
-    private fun awaitUntilPodTerminated(job: JobReference, timeout: Long = POD_TERMINATED_TIMEOUT) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { podIsTerminated(findPod(job)!!) }
-    }
-
-    private fun awaitNoPodsPresent(timeout: Long = POD_DELETED_TIMEOUT) {
-        Awaitility.await()
-            .atMost(Duration.ofSeconds(timeout))
-            .until { getPods().isEmpty() }
-    }
-
-    //  JOB AND POD REFERENCES HELPER METHODS
-    private fun jobExists(job: JobReference) = getJobs().contains(job)
-
-    private fun findPod(job: JobReference): PodReference? {
-        return getPods().find { it.controllerUid == job.uid }
-    }
-
     // HELPER KUBERNETES CLIENT TO VERIFY ACTUAL STATE ON THE KUBERNETES CLUSTER
     private fun createHelperClient(): KubernetesClient {
         return KubernetesClientBuilder().build().apply {
             createNamespace(NAMESPACE)
         }
     }
-
-    private fun getJobs(): List<JobReference> {
-        return helperClient.batch()
-            .v1()
-            .jobs()
-            .inNamespace(NAMESPACE)
-            .list()
-            .items
-            .map { JobReference(it.metadata.name, it.metadata.uid, it.metadata.namespace) }
-    }
-
-
-    private fun getPods(): List<PodReference> {
-        return helperClient
-            .pods()
-            .inNamespace(NAMESPACE)
-            .list()
-            .items
-            .map { it.reference() }
-    }
-
-
-    private fun podIsTerminated(ref: PodReference): Boolean {
-        val pod = getPod(ref)
-        return pod.status.containerStatuses[0].state.terminated != null
-    }
-
-    private fun podIsReady(ref: PodReference): Boolean {
-        val pod = getPod(ref)
-        return pod.status.containerStatuses[0].state.let {
-            it.running != null || it.terminated != null
-        }
-    }
-
-    private fun getPod(ref: PodReference): Pod =
-        helperClient.pods().inNamespace(ref.namespace).withName(ref.name).get()
-
 }

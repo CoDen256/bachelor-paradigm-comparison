@@ -13,16 +13,16 @@ class TimelineParserTest {
         val expected = listOf(
             add(PENDING),
             upd(PENDING),
-            upd(PENDING, containerStateWaiting()),
-            upd(RUNNING, containerStateRunning()),
+            upd(PENDING, waiting()),
+            upd(RUNNING, running()),
             noop(),
-            upd(RUNNING, containerStateTerminated(0)),
+            upd(RUNNING, terminated(0)),
             noop(),
-            upd(SUCCEEDED, containerStateTerminated(-2)),
+            upd(SUCCEEDED, terminated(-2)),
             noop(),
             noop(),
-            upd(SUCCEEDED, containerStateTerminated(0)),
-            del(SUCCEEDED, containerStateTerminated(0))
+            upd(SUCCEEDED, terminated(0)),
+            del(SUCCEEDED, terminated(0))
         )
 
         val result = parsePodEvents(podEvents)

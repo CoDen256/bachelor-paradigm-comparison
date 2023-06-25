@@ -31,7 +31,7 @@ data class ActiveJobSnapshot(val name: String,
                              val status: JobStatus,
                              val lastAction: String="NOOP") : JobSnapshot {
     val trueConditions: List<JobCondition> get() = conditions.filter { it.status.lowercase() == "true" }
-
+    //TODO: MAYBE REMOVE ACTION FROM THE SNAPSHOT?
     override fun toString(): String {
         return "$status${if (trueConditions.isNotEmpty()) trueConditions.map { it.type } else "" }"
         return "Job($name/$status${trueConditions.map { it.type }})[${lastAction.take(1)}]"
@@ -148,7 +148,7 @@ data class ActivePodSnapshot(
     }
 
     fun reference(): PodReference {
-        return PodReference(name, uid, namespace, controllerUid)
+        return PodReference(name, uid, controllerUid, namespace)
     }
 
 }
