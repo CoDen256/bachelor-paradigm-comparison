@@ -5,7 +5,6 @@ metadata:
   name: test-script-job
 spec:
   ttlSecondsAfterFinished: 0
-  activeDeadlineSeconds: 1000
   backoffLimit: 0
   template:
     spec:

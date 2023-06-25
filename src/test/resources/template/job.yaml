@@ -5,7 +5,6 @@ metadata:
   name: ${NAME}
 spec:
   ttlSecondsAfterFinished: ${TTL}
-  activeDeadlineSeconds: ${ACTIVE_DEADLINE}
   backoffLimit: 0
   template:
     spec:

@@ -24,7 +24,6 @@ class BaseJobTemplateFiller : JobTemplateFiller {
         const val NAMESPACE_PLACEHOLDER = "NAMESPACE"
         const val COMMAND_PLACEHOLDER = "COMMAND"
         const val TTL_PLACEHOLDER = "TTL"
-        const val ACTIVE_DEADLINE_SECONDS_PLACEHOLDER = "ACTIVE_DEADLINE"
         const val ARGUMENTS_PLACEHOLDER = "ARGUMENTS"
     }
 
@@ -38,7 +37,6 @@ class BaseJobTemplateFiller : JobTemplateFiller {
 
         values[COMMAND_PLACEHOLDER] =  quote(spec.command ?: "/bin/sh")
         values[TTL_PLACEHOLDER] = "${spec.ttl ?: 0}"
-        values[ACTIVE_DEADLINE_SECONDS_PLACEHOLDER] = "${spec.activeDeadlineSeconds ?: 1000}"
         values[ARGUMENTS_PLACEHOLDER] = substituteArguments(spec.arguments.toMutableList())
 
         return StringSubstitutor.replace(template, values)

@@ -23,7 +23,6 @@ data class ImageRunRequest(
     val image: String,
     val command: String? = null,
     val ttl: Long? = null,
-    val activeDeadlineSeconds: Long? = null,
     val arguments: List<String> = listOf(),
 ) {
 

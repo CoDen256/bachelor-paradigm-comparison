@@ -67,7 +67,6 @@ class BaseJobTemplateFillerTest {
                 "docker.optimax.cloud/kubernetes/test-script:1.0",
                 "python",
                 20,
-                2000,
                 listOf("script.py", "1", "10-10-2000 10:00:00", " hustensaft "))
         )
         assertEquals(expected, result)
