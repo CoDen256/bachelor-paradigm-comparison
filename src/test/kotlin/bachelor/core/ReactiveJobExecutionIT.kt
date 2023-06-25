@@ -3,7 +3,8 @@ package bachelor.core
 import bachelor.awaitNoPodsPresent
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.*
-import bachelor.core.api.snapshot.Phase.*
+import bachelor.core.api.snapshot.Phase.PENDING
+import bachelor.core.api.snapshot.Phase.RUNNING
 import bachelor.core.executor.JobExecutor
 import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.executor.PodNotTerminatedTimeoutException
@@ -113,7 +114,7 @@ class ReactiveJobExecutionIT {
                 10L, 11L,
                 0, 3,
             )
-        }catch (ex: PodTerminatedWithErrorException){
+        } catch (ex: PodTerminatedWithErrorException) {
             ex.currentState
         }
 
@@ -141,7 +142,7 @@ class ReactiveJobExecutionIT {
                 10L, 11L,
                 3, 3,
             )
-        }catch (ex: PodTerminatedWithErrorException){
+        } catch (ex: PodTerminatedWithErrorException) {
             ex.currentState
         }
 
@@ -169,13 +170,14 @@ class ReactiveJobExecutionIT {
         val result = assertThrows<PodNotTerminatedTimeoutException> {
             runner.run(
                 4, 4,
-                10, 0,
+                5, 0,
             )
         }.currentState
 
         val (podName, podUid, jobUid) = podRef(result)
         val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
-        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, running((podState(result) as RunningState).startedAt))
+        val expectedPod =
+            pod(podName, podUid, jobUid, UPDATE, RUNNING, running((podState(result) as RunningState).startedAt))
         val expectedLogs = Logs("start\n")
 
         assertNoJobPresent()
@@ -200,13 +202,17 @@ class ReactiveJobExecutionIT {
         }.currentState
 
         val (_, uid) = jobRef(result)
-        val expectedJob = job(uid, UPDATE, null, null, null, null)
+        val expectedAddJob = job(uid, ADD, null, null, null, null)
+        val expectedUpdateJob = job(uid, UPDATE, 1, 0, null, null)
         val expectedPod = InitialPodSnapshot
         val expectedLogs = Logs.empty()
 
+        if ((result.jobSnapshot as ActiveJobSnapshot).lastAction == "ADD") {
+            assertEquals(expectedAddJob, result.jobSnapshot)
+        } else {
+            assertEquals(expectedUpdateJob, result.jobSnapshot)
+        }
         assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
         assertEquals(expectedPod, result.podSnapshot)
         assertEquals(expectedLogs, result.logs)
 
@@ -228,7 +234,14 @@ class ReactiveJobExecutionIT {
 
         val (podName, podUid, jobUid) = podRef(result)
         val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
-        val expectedPod = pod(podName, podUid, jobUid, UPDATE, PENDING, waiting("ErrImagePull", (podState(result) as WaitingState).message))
+        val expectedPod = pod(
+            podName,
+            podUid,
+            jobUid,
+            UPDATE,
+            PENDING,
+            waiting("ErrImagePull", (podState(result) as WaitingState).message)
+        )
         val expectedLogs = Logs.empty()
 
         assertNoJobPresent()
@@ -310,7 +323,7 @@ class ReactiveJobExecutionIT {
             ImageRunRequest(
                 JOB_NAME,
                 namespace,
-                "busybox${ if (failToRun) "fail" else ""}:latest",
+                "busybox${if (failToRun) "fail" else ""}:latest",
                 "/bin/sh",
                 ttl,
                 listOf("-c") + arguments
