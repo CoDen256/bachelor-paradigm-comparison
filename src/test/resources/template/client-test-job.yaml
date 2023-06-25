@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: ${NAMESPACE}
+  name: ${NAME}
+spec:
+  ttlSecondsAfterFinished: ${TTL}
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - name: main
+          image: ${IMAGE_NAME}
+          command: [ ${COMMAND} ]
+          args: [ ${ARGUMENTS} ]
+      restartPolicy: Never
