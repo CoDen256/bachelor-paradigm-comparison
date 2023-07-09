@@ -35,8 +35,8 @@ class DefaultKubernetesClientJobApi(
 
     private var watchesStarted = AtomicBoolean()
 
-    private var jobListeners = ArrayList<ResourceEventListener<ActiveJobSnapshot>>()
-    private var podListeners = ArrayList<ResourceEventListener<ActivePodSnapshot>>()
+    private var jobListeners = HashSet<ResourceEventListener<ActiveJobSnapshot>>()
+    private var podListeners = HashSet<ResourceEventListener<ActivePodSnapshot>>()
 
     private var jobWatch: Watch<V1Job>? = null
     private var podWatch: Watch<V1Pod>? = null
