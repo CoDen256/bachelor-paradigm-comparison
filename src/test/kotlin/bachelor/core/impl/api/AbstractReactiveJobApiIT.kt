@@ -17,7 +17,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 
-const val NAMESPACE = "client-test"
+const val NAMESPACE = "api-client-test"
 
 
 abstract class AbstractReactiveJobApiIT(

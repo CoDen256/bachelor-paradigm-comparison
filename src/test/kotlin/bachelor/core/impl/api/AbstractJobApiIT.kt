@@ -18,38 +18,52 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 abstract class AbstractJobApiIT(
-    private val newJobApi: (String) -> JobApi
+    private val createJobApi: (String) -> JobApi
 ) {
     private val helper = createHelperClient()
     private lateinit var api: JobApi
 
-    @Test
-    fun setup() {
-        api = newJobApi(NAMESPACE)
-//        api.deleteAllJobsAndAwaitNoJobsPresent()
-//        api.startListeners()
-        api.addPodListener(object : ResourceEventListener<ActivePodSnapshot>{
-            override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
-                println(event)
-            }
+    private val cachedJobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
+    private val cachedPodEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
-        })
-        api.stopListeners()
+    private val podListener = object : ResourceEventListener<ActivePodSnapshot> {
+        override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
+            cachedPodEvents.add(event)
+        }
+    }
+
+    private val jobListener = object : ResourceEventListener<ActiveJobSnapshot> {
+        override fun onEvent(event: ResourceEvent<ActiveJobSnapshot>) {
+            cachedJobEvents.add(event)
+        }
+    }
+
+    @BeforeEach
+    fun setup() {
+        cachedJobEvents.clear()
+        cachedPodEvents.clear()
+        api = createJobApi(NAMESPACE)
+        api.deleteAllJobsAndAwaitNoJobsPresent()
+        api.startListeners()
+        api.addPodListener(podListener)
+        api.addJobListener(jobListener)
     }
 
     @AfterEach
     fun teardown() {
         api.deleteAllJobsAndAwaitNoJobsPresent()
         helper.awaitNoPodsPresent(NAMESPACE)
-        api.close()
-        api.collectJobEvents()
-        api.collectPodEvents()
+        api.removePodListener(podListener)
+        api.removeJobListener(jobListener)
+        api.close() // stopListeners
+        collectJobEvents()
+        collectPodEvents()
     }
 
     @Test
     fun create() {
-        api = newJobApi(NAMESPACE)
-        val job = api.createAndAwaitUntilJobCreated(1000, 0)
+        api = createJobApi(NAMESPACE)
+        val job = api.createAndAwaitUntilJobCreated(0, 0)
 
         helper.awaitUntilPodCreated(job, NAMESPACE)
 
@@ -100,14 +114,14 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
                 upd(1, 0, null, null),
             )
         )
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
@@ -127,7 +141,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -135,7 +149,7 @@ abstract class AbstractJobApiIT(
                 del(1, 0, null, null),
             )
         )
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         val name = podEvents[0].element!!.name
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
@@ -158,7 +172,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -166,7 +180,7 @@ abstract class AbstractJobApiIT(
                 del(1, 0, null, null),
             )
         )
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -189,7 +203,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -197,7 +211,7 @@ abstract class AbstractJobApiIT(
                 del(1, 0, null, null),
             )
         )
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -222,7 +236,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -232,7 +246,7 @@ abstract class AbstractJobApiIT(
             )
         )
 
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -258,7 +272,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsAtLeastElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -267,7 +281,7 @@ abstract class AbstractJobApiIT(
             )
         )
 
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -291,7 +305,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -304,7 +318,7 @@ abstract class AbstractJobApiIT(
                 del(null, 0, null, 1, listOf("Complete")),
             )
         )
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -330,7 +344,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -346,7 +360,7 @@ abstract class AbstractJobApiIT(
                 del(null, 0, null, 1, listOf("Complete")),
             )
         )
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -375,7 +389,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -389,7 +403,7 @@ abstract class AbstractJobApiIT(
             )
         )
 
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -415,7 +429,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -432,7 +446,7 @@ abstract class AbstractJobApiIT(
             )
         )
 
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -462,7 +476,7 @@ abstract class AbstractJobApiIT(
         api.stopListeners() // emits complete
 
         // verify
-        val events = api.collectJobEvents()
+        val events = collectJobEvents()
         assertThat(events).containsExactlyElementsIn(
             listOf(
                 add(null, null, null, null),
@@ -470,7 +484,7 @@ abstract class AbstractJobApiIT(
             )
         )
 
-        val podEvents = api.collectPodEvents()
+        val podEvents = collectPodEvents()
         assertThat(podEvents).containsExactlyElementsIn(
             listOf(
                 add(PENDING, name = pod.name),
@@ -516,11 +530,11 @@ abstract class AbstractJobApiIT(
         helper.awaitUntilJobDoesNotExist(job, NAMESPACE, timeout)
     }
 
-    private fun JobApi.collectPodEvents(): List<ResourceEvent<ActivePodSnapshot>> =
-        podEvents().onEach { println(it) }
+    private fun collectPodEvents(): List<ResourceEvent<ActivePodSnapshot>> =
+        cachedPodEvents.also { println("------ POD-EVENTS ------") }.onEach { println(it) }
 
-    private fun JobApi.collectJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
-        jobEvents().onEach { println(it) }
+    private fun collectJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
+        cachedJobEvents.also { println("------ JOB-EVENTS ------") }.onEach { println(it) }
 
 
 

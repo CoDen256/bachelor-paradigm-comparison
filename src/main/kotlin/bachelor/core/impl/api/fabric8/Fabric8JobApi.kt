@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Sinks
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -46,9 +47,14 @@ class Fabric8JobApi(
         TODO("Not yet implemented")
     }
 
-    override fun removeListener(listener: ResourceEventListener<out Snapshot>) {
+    override fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
         TODO("Not yet implemented")
     }
+
+    override fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+        TODO("Not yet implemented")
+    }
+
 
     override fun startListeners() {
         if (informersStarted.compareAndSet(false, true)) {

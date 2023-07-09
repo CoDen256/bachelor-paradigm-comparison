@@ -4,11 +4,7 @@ import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.JobApi
 import bachelor.core.api.ResourceEventListener
-import bachelor.core.api.snapshot.JobReference
-import bachelor.core.api.snapshot.PodReference
-import bachelor.core.api.snapshot.ActiveJobSnapshot
-import bachelor.core.api.snapshot.ActivePodSnapshot
-import bachelor.core.api.snapshot.Snapshot
+import bachelor.core.api.snapshot.*
 import com.google.gson.reflect.TypeToken
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.apis.BatchV1Api
@@ -17,7 +13,9 @@ import io.kubernetes.client.openapi.models.V1Job
 import io.kubernetes.client.openapi.models.V1Pod
 import io.kubernetes.client.util.Watch
 import io.kubernetes.client.util.Yaml
+import java.lang.RuntimeException
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
 
@@ -33,12 +31,15 @@ class DefaultKubernetesClientJobApi(
     private val watchPodCall =
         coreV1Api.listNamespacedPodCall(namespace, null, null, null, null, null, null, null, null, null, true, null)
 
-    private val cachedJobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
-    private val cachedPodEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
 
     private var watchesStarted = AtomicBoolean()
 
-    private var watches: MutableMap<ResourceEventListener<*>, Watch<*>> = HashMap()
+    private var jobListeners = ArrayList<ResourceEventListener<ActiveJobSnapshot>>()
+    private var podListeners = ArrayList<ResourceEventListener<ActivePodSnapshot>>()
+
+    private var jobWatch: Watch<V1Job>? = null
+    private var podWatch: Watch<V1Pod>? = null
 
     private val jobWatchResponseType = object : TypeToken<Watch.Response<V1Job>>() {}.type
     private val podWatchResponseType = object : TypeToken<Watch.Response<V1Pod>>() {}.type
@@ -46,47 +47,56 @@ class DefaultKubernetesClientJobApi(
     private val executor = Executors.newFixedThreadPool(2)
 
     override fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
-        val watch: Watch<V1Pod>
-        Watch.createWatch<V1Pod>(client, watchPodCall, podWatchResponseType).also {
-            watch = it
-        }
-        watches[listener] = watch
-        executor.submit {
-            while (watch.hasNext()){
-                println("HASNEXT")
-            }
-            println("STOP")
-            watch.forEachRemaining {
-                listener.onEvent(mapWatchPodResponse(it))
-            }
-        }
+        podListeners.add(listener)
     }
 
     override fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
-        TODO("Not yet implemented")
+        jobListeners.add(listener)
     }
 
-    override fun removeListener(listener: ResourceEventListener<out Snapshot>) {
-        TODO("Not yet implemented")
+    override fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
+        podListeners.remove(listener)
     }
+
+    override fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+        jobListeners.remove(listener)
+    }
+
     // TODO: give from outside, maybe the same for fabric8
 
     override fun startListeners() {
         if (!watchesStarted.compareAndSet(false, true)) {
             error("Watches are already started!")
         }
-//        val jobWatch: Watch<V1Job> = Watch.createWatch<V1Job?>(client, watchJobCall, jobWatchResponseType).also {
-//            this.jobWatch = it
-//        }
-//        val podWatch: Watch<V1Pod> = Watch.createWatch<V1Pod?>(client, watchPodCall, podWatchResponseType).also {
-//            this.podWatch = it
-//        }
-//        executor.submit {
-//            jobWatch.forEachRemaining { cachedJobEvents.add(mapWatchJobResponse(it)) }
-//        }
-//        executor.submit {
-//            podWatch.forEachRemaining { cachedPodEvents.add(mapWatchPodResponse(it)) }
-//        }
+        val jobWatch: Watch<V1Job> = Watch.createWatch<V1Job?>(client, watchJobCall, jobWatchResponseType).also {
+            this.jobWatch = it
+        }
+        val podWatch: Watch<V1Pod> = Watch.createWatch<V1Pod?>(client, watchPodCall, podWatchResponseType).also {
+            this.podWatch = it
+        }
+        executor.submit {
+            try {
+                jobWatch.forEachRemaining { event ->
+                    jobListeners.forEach {
+                        it.onEvent(mapWatchJobResponse(event))
+                    }
+                }
+            }catch (e: RuntimeException){
+                println("Job watch ended")
+            }
+
+        }
+        executor.submit {
+            try {
+                podWatch.forEachRemaining { event ->
+                    podListeners.forEach {
+                        it.onEvent(mapWatchPodResponse(event))
+                    }
+                }
+            }catch (e: RuntimeException){
+                println("Pod watch ended")
+            }
+        }
     }
 
     override fun create(spec: String): JobReference {
@@ -102,11 +112,11 @@ class DefaultKubernetesClientJobApi(
     }
 
     override fun podEvents(): List<ResourceEvent<ActivePodSnapshot>> {
-        return cachedPodEvents
+        TODO()
     }
 
     override fun jobEvents(): List<ResourceEvent<ActiveJobSnapshot>> {
-        return cachedJobEvents
+        TODO()
     }
 
     private fun mapWatchJobResponse(response: Watch.Response<V1Job>) =
@@ -123,7 +133,8 @@ class DefaultKubernetesClientJobApi(
     }
 
     override fun stopListeners() {
-        watches.values.forEach { it.close() }
+        podWatch?.close()
+        jobWatch?.close()
     }
 
     override fun close() {

@@ -3,6 +3,7 @@ package bachelor.core.api
 import bachelor.core.api.snapshot.*
 import bachelor.executor.reactive.ResourceEvent
 import reactor.core.publisher.Flux
+import java.util.concurrent.Future
 
 /**
  * [JobApi] is a simplified Kubernetes API client for managing
@@ -13,7 +14,8 @@ interface JobApi : AutoCloseable {
     fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>)
     fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>)
 
-    fun removeListener(listener: ResourceEventListener<out Snapshot>)
+    fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>)
+    fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>)
 
     /**
      * Starts the client and listening for the events. MUST be called only
