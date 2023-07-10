@@ -75,10 +75,19 @@ class ReactiveJobExecutorExecuteTest {
         // actual subscription to the stream happens a bit later, so events are shifted in time for the Executor than the time presented in the timelines
         // some of the events will already be emitted before the subscription
         whenever(api.create(spec)).thenReturn(originalJob)
+        setupApiEvents(jobStream, podStream)
+
+
+    }
+
+    private fun setupApiEvents(
+        jobStream: Flux<ResourceEvent<ActiveJobSnapshot>>,
+        podStream: Flux<ResourceEvent<ActivePodSnapshot>>
+    ) {
         whenever(api.addJobEventHandler(any())).then {
             val handler = it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
             jobStream.subscribeOn(Schedulers.parallel())
-                .doOnComplete{ handler.close() }
+                .doOnComplete { handler.close() }
                 .doOnCancel { handler.close() }
                 .doOnError {
                     println("ERROR: $it" + Thread.currentThread().name)
@@ -93,20 +102,18 @@ class ReactiveJobExecutorExecuteTest {
         whenever(api.addPodEventHandler(any())).then {
             val handler = it.arguments[0] as ResourceEventHandler<ActivePodSnapshot>
             podStream.subscribeOn(Schedulers.parallel())
-                .doOnComplete{ handler.close() }
+                .doOnComplete { handler.close() }
                 .doOnCancel { handler.close() }
                 .doOnError {
                     println("ERROR: $it" + Thread.currentThread().name)
                     handler.onError(it)
                 }
                 .subscribe { event ->
-                println("$event: " + Thread.currentThread().name)
-                handler.onEvent(event)
-            }
+                    println("$event: " + Thread.currentThread().name)
+                    handler.onEvent(event)
+                }
             null
         }
-
-
     }
 
     @AfterEach
@@ -118,6 +125,7 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndFailToCreateAJob() {
         // SETUP
+        setupApiEvents(Flux.never(), Flux.never())
         whenever(api.create(spec)).thenThrow(JobAlreadyExistsException("Job already exists", null))
 
         // EXERCISE
@@ -131,6 +139,7 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndFailToLoadJob() {
         // SETUP
+        setupApiEvents(Flux.never(), Flux.never())
         whenever(api.create(spec)).thenThrow(InvalidJobSpecException("Job spec is invalid", null))
 
         // EXERCISE
@@ -360,7 +369,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn("")
+        whenever(api.getLogs(any())).thenReturn(null)
 
         // EXERCISE
         val result = run(millis(600), millis(5000))
@@ -396,7 +405,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn("")
+        whenever(api.getLogs(any())).thenReturn(null)
 
         // EXERCISE
         val result = run(millis(600), millis(700))

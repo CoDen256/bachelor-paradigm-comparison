@@ -77,7 +77,7 @@ interface JobApi : AutoCloseable {
      * @param pod the pod, which logs to request
      * @return the logs
      */
-    fun getLogs(pod: PodReference): String
+    fun getLogs(pod: PodReference): String?
 
     /**
      * Stop the inner informers, that listen to the events regarding pods and

@@ -111,7 +111,7 @@ class Fabric8JobApi(
             })
     }
 
-    override fun getLogs(pod: PodReference): String {
+    override fun getLogs(pod: PodReference): String? {
         logger.info("Getting logs for ${pod.name}...")
         return api.pods()
             .inNamespace(pod.namespace)

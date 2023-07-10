@@ -116,7 +116,7 @@ class DefaultKubernetesClientJobApi(
     private fun mapWatchPodResponse(response: Watch.Response<V1Pod>) =
         resourceEvent(response.type) { response.`object`.snapshot(it) }
 
-    override fun getLogs(pod: PodReference): String {
+    override fun getLogs(pod: PodReference): String? {
         return coreV1Api
             .readNamespacedPodLog(
                 pod.name, pod.namespace, null, null, null, null, null, null, null, null, null

@@ -400,7 +400,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn("")
+        whenever(api.getLogs(any())).thenReturn(null)
         val result = nextTerminatedSnapshot(stream, millis(500), millis(500), millis(500))
 
         // VERIFY

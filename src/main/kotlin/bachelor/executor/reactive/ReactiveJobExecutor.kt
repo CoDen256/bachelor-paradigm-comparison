@@ -13,6 +13,7 @@ import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
+import reactor.core.publisher.toMono
 import reactor.kotlin.core.publisher.toMono
 import java.time.Duration
 
@@ -254,6 +255,14 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         }
     }
 
+    private fun getLogs(podSnapshot: ActivePodSnapshot): Mono<String> {
+        return try {
+            api.getLogs(podSnapshot.reference()).toMono()
+        }catch (e: Exception){
+            e.toMono()
+        }
+    }
+
     /**
      * Filter and combine snapshots. To provide at least one snapshot in the
      * stream, representing an unavailable state, or that pod or job has
@@ -420,7 +429,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         return getLogs(podSnapshot).map { Logs(it) }
     }
 
-    private fun getLogs(podSnapshot: ActivePodSnapshot) = api.getLogs(podSnapshot.reference()).toMono()
+
 
     /**
      * Helper method to capture the [ExecutionSnapshot]s events emitted from

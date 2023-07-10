@@ -77,7 +77,7 @@ abstract class AbstractJobApiIT(
 
         helper.awaitUntilPodReady(job, NAMESPACE)
 
-        val logs = api.collectLogs(pod)
+        val logs = api.collectLogs(pod)!!
         assertContains(logs, "start\n")
     }
 
