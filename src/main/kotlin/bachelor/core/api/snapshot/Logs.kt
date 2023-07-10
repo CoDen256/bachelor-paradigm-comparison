@@ -10,7 +10,7 @@ data class Logs(val content: String?) {
     constructor(bytes: ByteArray) : this(String(bytes))
 
     override fun toString(): String {
-        return content?.let { StringEscapeUtils.escapeJava(it) } ?: "<NO LOG>"
+        return content?.let { StringEscapeUtils.escapeJava(it) } ?: "<NO LOGS>"
     }
 
     fun getContentOrEmpty(): String {
