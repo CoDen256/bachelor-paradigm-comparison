@@ -219,7 +219,6 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         }
         api.addPodEventHandler(podListener)
         api.addJobEventHandler(jobListener)
-
         val jobSnapshotStream = jobEventSink.asFlux().cache().flatMap { it.element.toMono() }
         val podSnapshotStream = podEventSink.asFlux().cache().flatMap { it.element.toMono() }
 
@@ -436,7 +435,9 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
      */
     private fun logAsTimed(stream: Flux<ExecutionSnapshot>): Flux<ExecutionSnapshot> {
         return if (!logger.isDebugEnabled) stream else stream.timed()
-            .doOnNext { logger.info("(E): ${it.elapsedSinceSubscription().toMillis()}ms - ${it.get()}") }
+            .doOnNext {
+//                logger.info("(E): ${it.elapsedSinceSubscription().toMillis()}ms - ${it.get()}")
+            }
             .map { it.get() }
     }
 

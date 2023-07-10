@@ -76,42 +76,39 @@ class ReactiveJobExecutorExecuteTest {
         // some of the events will already be emitted before the subscription
         whenever(api.create(spec)).thenReturn(originalJob)
         setupApiEvents(jobStream, podStream)
-
-
     }
 
-    private fun setupApiEvents(
-        jobStream: Flux<ResourceEvent<ActiveJobSnapshot>>,
-        podStream: Flux<ResourceEvent<ActivePodSnapshot>>
-    ) {
-        whenever(api.addJobEventHandler(any())).then {
-            val handler = it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
-            jobStream.subscribeOn(Schedulers.parallel())
+    private fun setupApiEvents(jobStream: Flux<ResourceEvent<ActiveJobSnapshot>>, podStream: Flux<ResourceEvent<ActivePodSnapshot>>) {
+        // TODO: subscription is done separately to source and target flux.
+        // target flux is subscribed on .block
+        // source flux is subscribed on .addListener()
+        // All the events that have delay between each other, that were emitted before
+        // the target flux (but after source flux) are cached in the sink
+        // as a result the cached events delays are not persisted and emitted immediately one after another
+        // THIS IS not the problem of the executor, but rather how the timeline that should be tested is
+        // is presented in the target flux. Its just a testing problem
+        // we solve it by delaying the source subscription a bit
+        whenever(api.addJobEventHandler(any())).then { invocation ->
+            val handler = invocation.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
+            jobStream
+                .delaySubscription(Duration.ofMillis(50))
                 .doOnComplete { handler.close() }
                 .doOnCancel { handler.close() }
-                .doOnError {
-                    println("ERROR: $it" + Thread.currentThread().name)
-                    handler.onError(it)
-                }
-                .subscribe { event ->
-                    println("$event: " + Thread.currentThread().name)
-                    handler.onEvent(event)
-                }
+                .doOnError { handler.onError(it) }
+                .subscribe { handler.onEvent(it) }
+            // returns control back to the caller
             null
         }
-        whenever(api.addPodEventHandler(any())).then {
-            val handler = it.arguments[0] as ResourceEventHandler<ActivePodSnapshot>
-            podStream.subscribeOn(Schedulers.parallel())
+        whenever(api.addPodEventHandler(any())).then { invocation ->
+            val handler = invocation.arguments[0] as ResourceEventHandler<ActivePodSnapshot>
+
+            podStream
+                .delaySubscription(Duration.ofMillis(50))
                 .doOnComplete { handler.close() }
                 .doOnCancel { handler.close() }
-                .doOnError {
-                    println("ERROR: $it" + Thread.currentThread().name)
-                    handler.onError(it)
-                }
-                .subscribe { event ->
-                    println("$event: " + Thread.currentThread().name)
-                    handler.onEvent(event)
-                }
+                .doOnError { handler.onError(it) }
+                .subscribe { handler.onEvent(it) }
+            // returns control back to the caller
             null
         }
     }
