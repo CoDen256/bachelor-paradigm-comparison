@@ -94,20 +94,12 @@ class Fabric8JobApi(
     }
 
 
-    override fun podEvents(): List<ResourceEvent<ActivePodSnapshot>> {
-        return TODO()
-    }
-
     private fun informOnPodEvents(): SharedIndexInformer<Pod> {
         return api.pods()
             .inNamespace(namespace)
             .inform(ResourceEventHandlerAdapter(AggregatedEventListener(podListeners)) {
                 obj, action -> obj?.snapshot(action)
             })
-    }
-
-    override fun jobEvents(): List<ResourceEvent<ActiveJobSnapshot>> {
-        return TODO()
     }
 
     private fun informOnJobEvents(): SharedIndexInformer<Job> {

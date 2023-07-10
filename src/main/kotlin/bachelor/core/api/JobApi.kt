@@ -9,8 +9,35 @@ import reactor.core.publisher.Flux
  * Kubernetes Jobs, Pods and observing events regarding Jobs and Pods within a namespace
  */
 interface JobApi : AutoCloseable {
-
+        // TODO: segrate into two different interfaces, one for listening, another for creating, deleting, reading logs
+    /**
+     * Provides a [ResourceEvent] publisher, which internally via listeners
+     * captures the events occurring in a particular namespace related to all
+     * [Pod] resources in that namespace and publishes them as a stream. Each
+     * event encapsulates an operation and a [Pod] instance (snapshot of the
+     * pod at a given point of time), on which the operation was performed.
+     * Thus, it is possible to observe any possible [Pod] event occurring in a
+     * particular namespace. The underlying event stream should be cached, so
+     * even if the subscribers subscribe after relevant events are emitted, the
+     * events will still get processed
+     *
+     * @return a [Flux] publisher, which streams all the [Pod] events
+     */
     fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>)
+
+    /**
+     * Provides a [ResourceEvent] publisher, which internally via listeners
+     * captures the events occurring in a particular namespace related to all
+     * [Job] resources in that namespace and publishes them as a stream. Each
+     * event encapsulates an operation and a [Job] instance (snapshot of a
+     * job at a given point of time), on which the operation was performed.
+     * Thus, it is possible to observe any possible [Job] event occurring in
+     * particular namespace. The underlying event stream should be cached, so
+     * even if the subscribers subscribe after relevant events are emitted, the
+     * events will still get processed
+     *
+     * @return a [Flux] publisher, which streams all the [Job] events
+     */
     fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>)
 
     fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>)
@@ -43,36 +70,6 @@ interface JobApi : AutoCloseable {
      * @param job the job to delete
      */
     fun delete(job: JobReference)
-
-    /**
-     * Provides a [ResourceEvent] publisher, which internally via listeners
-     * captures the events occurring in a particular namespace related to all
-     * [Pod] resources in that namespace and publishes them as a stream. Each
-     * event encapsulates an operation and a [Pod] instance (snapshot of the
-     * pod at a given point of time), on which the operation was performed.
-     * Thus, it is possible to observe any possible [Pod] event occurring in a
-     * particular namespace. The underlying event stream should be cached, so
-     * even if the subscribers subscribe after relevant events are emitted, the
-     * events will still get processed
-     *
-     * @return a [Flux] publisher, which streams all the [Pod] events
-     */
-    fun podEvents(): List<ResourceEvent<ActivePodSnapshot>>
-
-    /**
-     * Provides a [ResourceEvent] publisher, which internally via listeners
-     * captures the events occurring in a particular namespace related to all
-     * [Job] resources in that namespace and publishes them as a stream. Each
-     * event encapsulates an operation and a [Job] instance (snapshot of a
-     * job at a given point of time), on which the operation was performed.
-     * Thus, it is possible to observe any possible [Job] event occurring in
-     * particular namespace. The underlying event stream should be cached, so
-     * even if the subscribers subscribe after relevant events are emitted, the
-     * events will still get processed
-     *
-     * @return a [Flux] publisher, which streams all the [Job] events
-     */
-    fun jobEvents(): List<ResourceEvent<ActiveJobSnapshot>>
 
     /**
      * Makes a request for the given pod to obtain the logs it has produced.

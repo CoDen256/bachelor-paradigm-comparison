@@ -62,8 +62,8 @@ class DefaultKubernetesClientJobApi(
         jobListeners.remove(listener)
     }
 
-    // TODO: give from outside, maybe the same for fabric8
-
+    // TODO: give executor from outside, maybe the same for fabric8
+    // todo: maybe in init{}
     override fun startListeners() {
         if (!watchesStarted.compareAndSet(false, true)) {
             error("Watches are already started!")
@@ -109,14 +109,6 @@ class DefaultKubernetesClientJobApi(
     override fun delete(job: JobReference) {
         batchV1Api // Propagation policy background deletes the dependents as well (the pod)
             .deleteNamespacedJob(job.name, namespace, null, null, null, null, "Background", null)
-    }
-
-    override fun podEvents(): List<ResourceEvent<ActivePodSnapshot>> {
-        TODO()
-    }
-
-    override fun jobEvents(): List<ResourceEvent<ActiveJobSnapshot>> {
-        TODO()
     }
 
     private fun mapWatchJobResponse(response: Watch.Response<V1Job>) =
