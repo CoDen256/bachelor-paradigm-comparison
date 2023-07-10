@@ -17,6 +17,8 @@ import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
+const val NAMESPACE = "api-client-test"
+
 abstract class AbstractJobApiIT(
     private val createJobApi: (String) -> JobApi
 ) {

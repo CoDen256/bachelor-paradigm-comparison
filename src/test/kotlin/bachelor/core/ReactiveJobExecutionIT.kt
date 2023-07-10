@@ -2,8 +2,6 @@ package bachelor.core
 
 import bachelor.awaitNoPodsPresent
 import bachelor.core.api.JobApi
-import bachelor.core.api.ReactiveJobApi
-import bachelor.core.api.ReactiveJobApiAdapter
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.PENDING
 import bachelor.core.api.snapshot.Phase.RUNNING

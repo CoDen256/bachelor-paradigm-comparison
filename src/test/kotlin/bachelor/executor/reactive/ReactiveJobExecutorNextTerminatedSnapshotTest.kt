@@ -2,7 +2,6 @@ package bachelor.executor.reactive
 
 import bachelor.cachedEmitter
 import bachelor.core.api.JobApi
-import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.ExecutionSnapshot
 import bachelor.core.api.snapshot.InitialJobSnapshot
 import bachelor.core.api.snapshot.InitialPodSnapshot
@@ -22,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.Mono.just
 import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.concurrent.TimeoutException

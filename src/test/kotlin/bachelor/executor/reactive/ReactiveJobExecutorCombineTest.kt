@@ -2,7 +2,6 @@ package bachelor.executor.reactive
 
 import bachelor.cachedEmitter
 import bachelor.core.api.JobApi
-import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import bachelor.core.impl.template.*
@@ -19,10 +18,7 @@ import org.mockito.kotlin.*
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
-/**
- * Tests pertaining [ReactiveJobExecutor.filterAndCombineSnapshots]
- * method
- */
+/** Tests pertaining [ReactiveJobExecutor.filterAndCombineSnapshots] method */
 @ExtendWith(MockitoExtension::class)
 class ReactiveJobExecutorCombineTest {
 

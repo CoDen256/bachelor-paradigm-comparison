@@ -4,7 +4,6 @@ import bachelor.core.api.JobApi
 import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.executor.PodTerminatedWithErrorException
-import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*

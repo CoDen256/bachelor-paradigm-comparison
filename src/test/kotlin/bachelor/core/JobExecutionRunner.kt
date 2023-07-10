@@ -1,6 +1,5 @@
 package bachelor.core
 
-import bachelor.core.api.ReactiveJobApiAdapter
 import bachelor.core.impl.api.fabric8.Fabric8JobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
