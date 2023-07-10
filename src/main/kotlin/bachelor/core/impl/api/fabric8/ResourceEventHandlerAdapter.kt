@@ -1,11 +1,11 @@
 package bachelor.core.impl.api.fabric8
 
-import bachelor.core.api.ResourceEventListener
+import bachelor.core.api.ResourceEventHandler
 import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.snapshot.Snapshot
 import io.fabric8.kubernetes.api.model.HasMetadata
-import io.fabric8.kubernetes.client.informers.ResourceEventHandler
+import io.fabric8.kubernetes.client.informers.ResourceEventHandler as Fabric8ResourceEventHandler
 import reactor.core.publisher.Sinks
 
 /**
@@ -23,9 +23,9 @@ import reactor.core.publisher.Sinks
  * subscribe to the events captured by this [ResourceEventHandler]
  */
 class ResourceEventHandlerAdapter<O : HasMetadata, S : Snapshot>(
-    private val listener: ResourceEventListener<S>,
+    private val listener: bachelor.core.api.ResourceEventHandler<S>,
     private val mapping: (O?, Action) -> S?
-) : ResourceEventHandler<O> {
+) : Fabric8ResourceEventHandler<O> {
 
     override fun onAdd(obj: O?) {
         addEvent(Action.ADD, obj)

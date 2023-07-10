@@ -2,7 +2,6 @@ package bachelor.core.impl.api.fabric8
 
 import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
-import bachelor.executor.reactive.ResourceEvent
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.client.KubernetesClient
@@ -31,26 +30,26 @@ class Fabric8JobApi(
 
     private val logger = LogManager.getLogger()
 
-    private var jobListeners = HashSet<ResourceEventListener<ActiveJobSnapshot>>()
-    private var podListeners = HashSet<ResourceEventListener<ActivePodSnapshot>>()
+    private var jobListeners = HashSet<ResourceEventHandler<ActiveJobSnapshot>>()
+    private var podListeners = HashSet<ResourceEventHandler<ActivePodSnapshot>>()
 
     private var informersStarted = AtomicBoolean()
     private var jobInformer: SharedIndexInformer<Job>? = null
     private var podInformer: SharedIndexInformer<Pod>? = null
 
-    override fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
+    override fun addPodEventHandler(listener: ResourceEventHandler<ActivePodSnapshot>) {
         podListeners.add(listener)
     }
 
-    override fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+    override fun addJobEventHandler(listener: ResourceEventHandler<ActiveJobSnapshot>) {
         jobListeners.add(listener)
     }
 
-    override fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
+    override fun removePodEventHandler(listener: ResourceEventHandler<ActivePodSnapshot>) {
         podListeners.remove(listener)
     }
 
-    override fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+    override fun removeJobEventHandler(listener: ResourceEventHandler<ActiveJobSnapshot>) {
         jobListeners.remove(listener)
     }
 
@@ -97,7 +96,7 @@ class Fabric8JobApi(
     private fun informOnPodEvents(): SharedIndexInformer<Pod> {
         return api.pods()
             .inNamespace(namespace)
-            .inform(ResourceEventHandlerAdapter(AggregatedEventListener(podListeners)) {
+            .inform(ResourceEventHandlerAdapter(AggregatedEventHandler(podListeners)) {
                 obj, action -> obj?.snapshot(action)
             })
     }
@@ -107,7 +106,7 @@ class Fabric8JobApi(
             .v1()
             .jobs()
             .inNamespace(namespace)
-            .inform(ResourceEventHandlerAdapter(AggregatedEventListener(jobListeners)) {
+            .inform(ResourceEventHandlerAdapter(AggregatedEventHandler(jobListeners)) {
                 obj, action -> obj?.snapshot(action)
             })
     }

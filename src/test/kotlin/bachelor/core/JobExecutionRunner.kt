@@ -17,7 +17,7 @@ class JobExecutionRunner {
 
     private val client = KubernetesClientBuilder().build()
 
-    private val api = ReactiveJobApiAdapter(Fabric8JobApi(client, "calculations"))
+    private val api = Fabric8JobApi(client, "calculations")
 
     private val templateLoader = JobTemplateFileLoader(
         File("template.yaml")

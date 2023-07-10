@@ -1,6 +1,7 @@
 package bachelor.executor.reactive
 
 import bachelor.cachedEmitter
+import bachelor.core.api.JobApi
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
@@ -26,7 +27,7 @@ import reactor.test.StepVerifier
 class ReactiveJobExecutorCombineTest {
 
     @Mock
-    lateinit var api: ReactiveJobApi
+    lateinit var api: JobApi
 
     private fun combineSnapshots(
         podStream: Flux<ActivePodSnapshot>,

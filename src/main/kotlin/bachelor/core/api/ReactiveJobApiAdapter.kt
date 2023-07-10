@@ -27,12 +27,12 @@ class ReactiveJobApiAdapter(
     private val cachedJobEvents = jobEventSink.asFlux().cache()
     private val cachedPodEvents = podEventSink.asFlux().cache()
 
-    private val podListener = ResourceEventListener { podEventSink.tryEmitNext(it) }
-    private val jobListener = ResourceEventListener { jobEventSink.tryEmitNext(it) }
+    private val podListener = ResourceEventHandler { podEventSink.tryEmitNext(it) }
+    private val jobListener = ResourceEventHandler { jobEventSink.tryEmitNext(it) }
 
     override fun startListeners() {
-        api.addPodListener(podListener)
-        api.addJobListener(jobListener)
+        api.addPodEventHandler(podListener)
+        api.addJobEventHandler(jobListener)
         api.startListeners()
     }
 
@@ -79,8 +79,8 @@ class ReactiveJobApiAdapter(
         jobEventSink.tryEmitComplete()
         podEventSink.tryEmitComplete()
         logger.info("Removing listeners")
-        api.removeJobListener(jobListener)
-        api.removePodListener(podListener)
+        api.removeJobEventHandler(jobListener)
+        api.removePodEventHandler(podListener)
 
     }
 

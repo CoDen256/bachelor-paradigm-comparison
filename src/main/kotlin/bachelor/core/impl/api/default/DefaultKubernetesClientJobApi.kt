@@ -3,7 +3,7 @@ package bachelor.core.impl.api.default
 import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.JobApi
-import bachelor.core.api.ResourceEventListener
+import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*
 import com.google.gson.reflect.TypeToken
 import io.kubernetes.client.openapi.ApiClient
@@ -15,7 +15,6 @@ import io.kubernetes.client.util.Watch
 import io.kubernetes.client.util.Yaml
 import java.lang.RuntimeException
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
 
@@ -35,8 +34,8 @@ class DefaultKubernetesClientJobApi(
 
     private var watchesStarted = AtomicBoolean()
 
-    private var jobListeners = HashSet<ResourceEventListener<ActiveJobSnapshot>>()
-    private var podListeners = HashSet<ResourceEventListener<ActivePodSnapshot>>()
+    private var jobListeners = HashSet<ResourceEventHandler<ActiveJobSnapshot>>()
+    private var podListeners = HashSet<ResourceEventHandler<ActivePodSnapshot>>()
 
     private var jobWatch: Watch<V1Job>? = null
     private var podWatch: Watch<V1Pod>? = null
@@ -46,19 +45,19 @@ class DefaultKubernetesClientJobApi(
 
     private val executor = Executors.newFixedThreadPool(2)
 
-    override fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
+    override fun addPodEventHandler(listener: ResourceEventHandler<ActivePodSnapshot>) {
         podListeners.add(listener)
     }
 
-    override fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+    override fun addJobEventHandler(listener: ResourceEventHandler<ActiveJobSnapshot>) {
         jobListeners.add(listener)
     }
 
-    override fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
+    override fun removePodEventHandler(listener: ResourceEventHandler<ActivePodSnapshot>) {
         podListeners.remove(listener)
     }
 
-    override fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
+    override fun removeJobEventHandler(listener: ResourceEventHandler<ActiveJobSnapshot>) {
         jobListeners.remove(listener)
     }
 

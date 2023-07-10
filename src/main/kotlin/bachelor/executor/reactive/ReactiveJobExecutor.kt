@@ -1,16 +1,18 @@
 package bachelor.executor.reactive
 
+import bachelor.core.api.JobApi
 import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.executor.PodTerminatedWithErrorException
 import bachelor.core.api.ReactiveJobApi
-import bachelor.core.api.snapshot.PodReference
+import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import org.apache.logging.log4j.LogManager
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
 import java.time.Duration
 
@@ -148,7 +150,7 @@ import java.time.Duration
 //                                               |
 //                                               V
 // result: ----------------------------------------------------0(Rdy + Term + [LOGS])----------------------|>
-class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
+class ReactiveJobExecutor(val api: JobApi): JobExecutor {
 
     private val logger = LogManager.getLogger()
 
@@ -186,11 +188,51 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
      * @return the next terminated [ExecutionSnapshot]
      */
     fun executeUntilTerminated(request: JobExecutionRequest): Mono<ExecutionSnapshot> {
-        val jobSnapshotStream = api.jobEvents().flatMap { it.element.toMono() }
-        val podSnapshotStream = api.podEvents().flatMap { it.element.toMono() }
+        val jobEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActiveJobSnapshot>>()
+        val podEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActivePodSnapshot>>()
+
+        val podListener = object: ResourceEventHandler<ActivePodSnapshot> {
+            override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
+                podEventSink.tryEmitNext(event)
+            }
+
+            override fun onError(t: Throwable) {
+                podEventSink.tryEmitError(t)
+            }
+
+            override fun close() {
+                podEventSink.tryEmitComplete()
+            }
+        }
+        val jobListener = object: ResourceEventHandler<ActiveJobSnapshot> {
+            override fun onEvent(event: ResourceEvent<ActiveJobSnapshot>) {
+                jobEventSink.tryEmitNext(event)
+            }
+
+            override fun onError(t: Throwable) {
+                jobEventSink.tryEmitError(t)
+            }
+
+            override fun close() {
+                jobEventSink.tryEmitComplete()
+            }
+        }
+        api.addPodEventHandler(podListener)
+        api.addJobEventHandler(jobListener)
+
+        val jobSnapshotStream = jobEventSink.asFlux().cache().flatMap { it.element.toMono() }
+        val podSnapshotStream = podEventSink.asFlux().cache().flatMap { it.element.toMono() }
+
+        fun cleanUp(job: JobReference){
+            api.delete(job)
+            jobEventSink.tryEmitComplete()
+            podEventSink.tryEmitComplete()
+            api.removeJobEventHandler(jobListener)
+            api.removePodEventHandler(podListener)
+        }
 
         // deserialize job spec, create and run the job in the cluster
-        return api.create(request.jobSpec).flatMap { job ->
+        return createJob(request).flatMap { job ->
             // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
             val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
                 .transform { logAsTimed(it) }
@@ -198,9 +240,17 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
 
             // get next snapshot, where pod is terminated
             nextTerminatedSnapshot(stream, request.isRunningTimeout, request.isTerminatedTimeout)
-                .doOnNext { api.delete(job) }
-                .doOnError { api.delete(job) }
-                .doOnCancel { api.delete(job) }
+                .doOnNext { cleanUp(job) }
+                .doOnError { cleanUp(job) }
+                .doOnCancel { cleanUp(job) }
+        }
+    }
+
+    private fun createJob(request: JobExecutionRequest): Mono<JobReference> {
+        return try {
+            api.create(request.jobSpec).toMono()
+        } catch (e: Exception){
+            e.toMono()
         }
     }
 
@@ -367,8 +417,10 @@ class ReactiveJobExecutor(val api: ReactiveJobApi): JobExecutor {
      */
     private fun getLogs(podSnapshot: PodSnapshot): Mono<Logs> {
         if (podSnapshot !is ActivePodSnapshot) return Mono.empty()
-        return api.getLogs(podSnapshot.reference()).map { Logs(it) }
+        return getLogs(podSnapshot).map { Logs(it) }
     }
+
+    private fun getLogs(podSnapshot: ActivePodSnapshot) = api.getLogs(podSnapshot.reference()).toMono()
 
     /**
      * Helper method to capture the [ExecutionSnapshot]s events emitted from

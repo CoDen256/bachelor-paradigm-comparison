@@ -1,6 +1,7 @@
 package bachelor.core
 
 import bachelor.awaitNoPodsPresent
+import bachelor.core.api.JobApi
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.ReactiveJobApiAdapter
 import bachelor.core.api.snapshot.*
@@ -47,13 +48,13 @@ class ReactiveJobExecutionIT {
     private val jobSpecProvider = JobTemplateFileLoader(File(this::class.java.getResource(jobSpecFile)!!.toURI()))
 
 
-    private lateinit var api: ReactiveJobApi
+    private lateinit var api: JobApi
     private lateinit var executor: JobExecutor
     private lateinit var runner: KubernetesBasedImageRunner
 
     @BeforeEach
     fun startup() {
-        api = ReactiveJobApiAdapter(Fabric8JobApi(helper, NAMESPACE))
+        api = Fabric8JobApi(helper, NAMESPACE)
         executor = ReactiveJobExecutor(api)
         runner = KubernetesBasedImageRunner(executor, jobSpecProvider, resolver)
         helper.awaitNoPodsPresent(namespace)

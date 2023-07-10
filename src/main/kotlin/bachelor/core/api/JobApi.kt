@@ -23,7 +23,7 @@ interface JobApi : AutoCloseable {
      *
      * @return a [Flux] publisher, which streams all the [Pod] events
      */
-    fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>)
+    fun addPodEventHandler(listener: ResourceEventHandler<ActivePodSnapshot>)
 
     /**
      * Provides a [ResourceEvent] publisher, which internally via listeners
@@ -38,10 +38,10 @@ interface JobApi : AutoCloseable {
      *
      * @return a [Flux] publisher, which streams all the [Job] events
      */
-    fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>)
+    fun addJobEventHandler(listener: ResourceEventHandler<ActiveJobSnapshot>)
 
-    fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>)
-    fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>)
+    fun removePodEventHandler(listener: ResourceEventHandler<ActivePodSnapshot>)
+    fun removeJobEventHandler(listener: ResourceEventHandler<ActiveJobSnapshot>)
 
     /**
      * Starts the client and listening for the events. MUST be called only

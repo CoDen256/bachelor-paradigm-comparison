@@ -21,7 +21,7 @@ import org.mockito.kotlin.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
-import reactor.kotlin.core.publisher.toMono
+import reactor.core.scheduler.Schedulers
 import reactor.test.StepVerifier
 import java.time.Duration
 
@@ -61,7 +61,7 @@ class ReactiveJobExecutorExecuteTest {
     private val originalJob = JobReference(TARGET_JOB, TARGET_JOB, "-")
 
     @Mock
-    lateinit var api: ReactiveJobApi
+    lateinit var api: JobApi
 
     private fun run(isRunningTimeout: Duration, isTerminatedTimeout: Duration): Mono<ExecutionSnapshot> {
         return ReactiveJobExecutor(api)
@@ -74,9 +74,39 @@ class ReactiveJobExecutorExecuteTest {
     ) {
         // actual subscription to the stream happens a bit later, so events are shifted in time for the Executor than the time presented in the timelines
         // some of the events will already be emitted before the subscription
-        whenever(api.create(spec)).thenReturn(originalJob.toMono())
-        whenever(api.jobEvents()).thenReturn(jobStream)
-        whenever(api.podEvents()).thenReturn(podStream)
+        whenever(api.create(spec)).thenReturn(originalJob)
+        whenever(api.addJobEventHandler(any())).then {
+            val handler = it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
+            jobStream.subscribeOn(Schedulers.parallel())
+                .doOnComplete{ handler.close() }
+                .doOnCancel { handler.close() }
+                .doOnError {
+                    println("ERROR: $it" + Thread.currentThread().name)
+                    handler.onError(it)
+                }
+                .subscribe { event ->
+                    println("$event: " + Thread.currentThread().name)
+                    handler.onEvent(event)
+                }
+            null
+        }
+        whenever(api.addPodEventHandler(any())).then {
+            val handler = it.arguments[0] as ResourceEventHandler<ActivePodSnapshot>
+            podStream.subscribeOn(Schedulers.parallel())
+                .doOnComplete{ handler.close() }
+                .doOnCancel { handler.close() }
+                .doOnError {
+                    println("ERROR: $it" + Thread.currentThread().name)
+                    handler.onError(it)
+                }
+                .subscribe { event ->
+                println("$event: " + Thread.currentThread().name)
+                handler.onEvent(event)
+            }
+            null
+        }
+
+
     }
 
     @AfterEach
@@ -84,12 +114,11 @@ class ReactiveJobExecutorExecuteTest {
         logTimedEvents(events)
     }
 
+
     @Test
     fun executeAndFailToCreateAJob() {
         // SETUP
-        whenever(api.jobEvents()).thenReturn(Flux.never())
-        whenever(api.podEvents()).thenReturn(Flux.never())
-        whenever(api.create(spec)).thenReturn(Mono.error(JobAlreadyExistsException("Job already exists", null)))
+        whenever(api.create(spec)).thenThrow(JobAlreadyExistsException("Job already exists", null))
 
         // EXERCISE
         val result = run(millis(100), millis(100))
@@ -102,9 +131,7 @@ class ReactiveJobExecutorExecuteTest {
     @Test
     fun executeAndFailToLoadJob() {
         // SETUP
-        whenever(api.jobEvents()).thenReturn(Flux.never())
-        whenever(api.podEvents()).thenReturn(Flux.never())
-        whenever(api.create(spec)).thenReturn(Mono.error(InvalidJobSpecException("Job spec is invalid", null)))
+        whenever(api.create(spec)).thenThrow(InvalidJobSpecException("Job spec is invalid", null))
 
         // EXERCISE
         val result = run(millis(5000), millis(5000))
@@ -181,7 +208,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(expectedLogs.toMono())
+        whenever(api.getLogs(any())).thenReturn(expectedLogs)
 
         // EXERCISE
         val result = run(millis(5000), millis(5000))
@@ -217,7 +244,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(expectedLogs.toMono())
+        whenever(api.getLogs(any())).thenReturn(expectedLogs)
 
         // EXERCISE
         val result = run(millis(5000), millis(5000))
@@ -262,7 +289,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(expectedLogs.toMono())
+        whenever(api.getLogs(any())).thenReturn(expectedLogs)
 
         // EXERCISE
         val result = run(millis(5000), millis(5000))
@@ -297,7 +324,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(expectedLogs.toMono())
+        whenever(api.getLogs(any())).thenReturn(expectedLogs)
 
         // EXERCISE
         val result = run(millis(5000), millis(5000))
@@ -333,7 +360,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(Mono.empty())
+        whenever(api.getLogs(any())).thenReturn("")
 
         // EXERCISE
         val result = run(millis(600), millis(5000))
@@ -369,7 +396,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(Mono.empty())
+        whenever(api.getLogs(any())).thenReturn("")
 
         // EXERCISE
         val result = run(millis(600), millis(700))
@@ -403,7 +430,7 @@ class ReactiveJobExecutorExecuteTest {
         )
 
         setupApi(jobStream, podStream)
-        whenever(api.getLogs(any())).thenReturn(expectedLogs.toMono())
+        whenever(api.getLogs(any())).thenReturn(expectedLogs)
 
         // EXERCISE
         val result = run(millis(300), millis(1000))

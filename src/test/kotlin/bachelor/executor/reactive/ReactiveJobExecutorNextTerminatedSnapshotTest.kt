@@ -1,6 +1,7 @@
 package bachelor.executor.reactive
 
 import bachelor.cachedEmitter
+import bachelor.core.api.JobApi
 import bachelor.core.api.ReactiveJobApi
 import bachelor.core.api.snapshot.ExecutionSnapshot
 import bachelor.core.api.snapshot.InitialJobSnapshot
@@ -31,7 +32,7 @@ import java.util.concurrent.TimeoutException
 class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
     @Mock
-    lateinit var api: ReactiveJobApi
+    lateinit var api: JobApi
 
 
     private fun nextTerminatedSnapshot(
@@ -56,7 +57,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
     fun singleTerminatedStateCached() {
         // SETUP
         val expected = successfulPod()
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
 
         val stream: Flux<ExecutionSnapshot> = cachedEmitter(1) {
             emit(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, expected))
@@ -82,7 +83,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(100), millis(100), millis(100))
 
         // VERIFY
@@ -104,7 +105,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // Successful Snapshot emitted after the actual subscription
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(1000), millis(1000), millis(1000))
 
         // VERIFY
@@ -126,7 +127,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(1000), millis(1000), millis(1000))
 
         // VERIFY
@@ -148,7 +149,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(2000), millis(2000), millis(2000))
 
         // VERIFY
@@ -177,7 +178,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
 
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(
             stream, millis(1000), millis(1000), millis(1000),
             delaySubscription = subscriptionDelay
@@ -205,7 +206,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // We don't want to wait for the next one, and we are accepting first snapshot as the right one
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(
             stream,
             millis(1000),
@@ -250,7 +251,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(300), millis(300), millis(1000))
 
         // VERIFY
@@ -273,7 +274,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(400), millis(400), millis(1000))
 
         // VERIFY
@@ -298,7 +299,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         // after delay of 500 ms is expired, then the next state is fetched, which is cached by the stream.
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(400), millis(1000), millis(1000))
 
         // VERIFY
@@ -324,7 +325,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(600), millis(1000), millis(1000))
 
         // VERIFY
@@ -347,7 +348,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(
             stream,
             millis(700), // running before 700ms
@@ -376,7 +377,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(just("LOGS"))
+        whenever(api.getLogs(any())).thenReturn("LOGS")
         val result = nextTerminatedSnapshot(stream, millis(500), millis(500), millis(500))
 
         // VERIFY
@@ -399,7 +400,7 @@ class ReactiveJobExecutorNextTerminatedSnapshotTest {
         }
 
         // EXERCISE
-        whenever(api.getLogs(any())).thenReturn(Mono.empty())
+        whenever(api.getLogs(any())).thenReturn("")
         val result = nextTerminatedSnapshot(stream, millis(500), millis(500), millis(500))
 
         // VERIFY

@@ -2,7 +2,7 @@ package bachelor.core.impl.api
 
 import bachelor.*
 import bachelor.core.api.JobApi
-import bachelor.core.api.ResourceEventListener
+import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.utils.generate.*
@@ -26,8 +26,8 @@ abstract class AbstractJobApiIT(
     private val jobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
     private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
-    private val podListener = ResourceEventListener { podEvents.add(it) }
-    private val jobListener = ResourceEventListener { jobEvents.add(it) }
+    private val podListener = ResourceEventHandler { podEvents.add(it) }
+    private val jobListener = ResourceEventHandler { jobEvents.add(it) }
 
     @BeforeEach
     fun setup() {
@@ -36,16 +36,16 @@ abstract class AbstractJobApiIT(
         api = createJobApi(NAMESPACE)
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.startListeners()
-        api.addPodListener(podListener)
-        api.addJobListener(jobListener)
+        api.addPodEventHandler(podListener)
+        api.addJobEventHandler(jobListener)
     }
 
     @AfterEach
     fun teardown() {
         api.deleteAllJobsAndAwaitNoJobsPresent()
         helper.awaitNoPodsPresent(NAMESPACE)
-        api.removePodListener(podListener)
-        api.removeJobListener(jobListener)
+        api.removePodEventHandler(podListener)
+        api.removeJobEventHandler(jobListener)
         api.close() // stopListeners
         collectJobEvents()
         collectPodEvents()
