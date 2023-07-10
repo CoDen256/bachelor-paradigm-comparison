@@ -85,3 +85,14 @@ interface JobApi : AutoCloseable {
      */
     fun stopListeners()
 }
+
+
+fun isPodTerminated(pod: PodSnapshot): Boolean =
+    pod is ActivePodSnapshot && pod.mainContainerState is TerminatedState
+
+/**
+ * Helper method to determine, whether the given [ExecutionSnapshot]
+ * corresponds to a state, when the pod is in state RUNNING or TERMINATED
+ */
+fun isPodRunningOrTerminated(pod: PodSnapshot): Boolean =
+    pod is ActivePodSnapshot && (pod.mainContainerState is TerminatedState || pod.mainContainerState is RunningState)

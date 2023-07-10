@@ -5,6 +5,8 @@ import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.executor.PodTerminatedWithErrorException
 import bachelor.core.api.ResourceEventHandler
+import bachelor.core.api.isPodRunningOrTerminated
+import bachelor.core.api.isPodTerminated
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import org.apache.logging.log4j.LogManager
@@ -339,10 +341,10 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
     ): Mono<ExecutionSnapshot> {
         return stream
             // Wait for running or terminated pod. On timeout, get the latest snapshot with logs and convert to an exception
-            .filter { isPodRunningOrTerminated(it) }
+            .filter { isPodRunningOrTerminated(it.podSnapshot) }
             .timeoutFirst(isRunningTimeout, latestSnapshotWithLogs(stream).flatMap { podNotRunningError(it, isRunningTimeout) })
             // Wait for terminated pod. On timeout, get the latest snapshot with logs and convert to an exception
-            .filter { isPodTerminated(it) }
+            .filter { isPodTerminated(it.podSnapshot) }
             .timeoutFirst(isTerminatedTimeout, latestSnapshotWithLogs(stream).flatMap { podNotTerminatedError(it, isTerminatedTimeout) })
             // Take the first from the latest available snapshots, that contains terminated pod
             .next()
@@ -383,15 +385,6 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
      * Helper method to determine, whether the given [ExecutionSnapshot]
      * corresponds to a state, when the pod is in state TERMINATED
      */
-    private fun isPodTerminated(e: ExecutionSnapshot): Boolean =
-        e.podSnapshot is ActivePodSnapshot && e.podSnapshot.mainContainerState is TerminatedState
-
-    /**
-     * Helper method to determine, whether the given [ExecutionSnapshot]
-     * corresponds to a state, when the pod is in state RUNNING or TERMINATED
-     */
-    private fun isPodRunningOrTerminated(e: ExecutionSnapshot): Boolean =
-        e.podSnapshot is ActivePodSnapshot && (e.podSnapshot.mainContainerState is TerminatedState || e.podSnapshot.mainContainerState is RunningState)
 
     /**
      * Get the latest available snapshot from the stream and populate it with
