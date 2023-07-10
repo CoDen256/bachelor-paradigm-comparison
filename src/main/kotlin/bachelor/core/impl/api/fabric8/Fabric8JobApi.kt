@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Sinks
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -32,27 +31,27 @@ class Fabric8JobApi(
 
     private val logger = LogManager.getLogger()
 
-    private val cachedJobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
-    private val cachedPodEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
-
+    private var jobListeners = HashSet<ResourceEventListener<ActiveJobSnapshot>>()
+    private var podListeners = HashSet<ResourceEventListener<ActivePodSnapshot>>()
 
     private var informersStarted = AtomicBoolean()
     private var jobInformer: SharedIndexInformer<Job>? = null
     private var podInformer: SharedIndexInformer<Pod>? = null
+
     override fun addPodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
-        TODO("Not yet implemented")
+        podListeners.add(listener)
     }
 
     override fun addJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
-        TODO("Not yet implemented")
+        jobListeners.add(listener)
     }
 
     override fun removePodListener(listener: ResourceEventListener<ActivePodSnapshot>) {
-        TODO("Not yet implemented")
+        podListeners.remove(listener)
     }
 
     override fun removeJobListener(listener: ResourceEventListener<ActiveJobSnapshot>) {
-        TODO("Not yet implemented")
+        jobListeners.remove(listener)
     }
 
 
@@ -96,19 +95,19 @@ class Fabric8JobApi(
 
 
     override fun podEvents(): List<ResourceEvent<ActivePodSnapshot>> {
-        return cachedPodEvents
+        return TODO()
     }
 
     private fun informOnPodEvents(): SharedIndexInformer<Pod> {
         return api.pods()
             .inNamespace(namespace)
-            .inform(ResourceEventHandlerAdapter(cachedPodEvents) {
+            .inform(ResourceEventHandlerAdapter(AggregatedEventListener(podListeners)) {
                 obj, action -> obj?.snapshot(action)
             })
     }
 
     override fun jobEvents(): List<ResourceEvent<ActiveJobSnapshot>> {
-        return cachedJobEvents
+        return TODO()
     }
 
     private fun informOnJobEvents(): SharedIndexInformer<Job> {
@@ -116,8 +115,8 @@ class Fabric8JobApi(
             .v1()
             .jobs()
             .inNamespace(namespace)
-            .inform(ResourceEventHandlerAdapter(cachedJobEvents) {
-                                                                 obj, action -> obj?.snapshot(action)
+            .inform(ResourceEventHandlerAdapter(AggregatedEventListener(jobListeners)) {
+                obj, action -> obj?.snapshot(action)
             })
     }
 

@@ -1,5 +1,6 @@
 package bachelor.core.impl.api.fabric8
 
+import bachelor.core.api.ResourceEventListener
 import bachelor.executor.reactive.Action
 import bachelor.executor.reactive.ResourceEvent
 import bachelor.core.api.snapshot.Snapshot
@@ -22,10 +23,9 @@ import reactor.core.publisher.Sinks
  * subscribe to the events captured by this [ResourceEventHandler]
  */
 class ResourceEventHandlerAdapter<O : HasMetadata, S : Snapshot>(
-    private val events: MutableList<ResourceEvent<S>>,
+    private val listener: ResourceEventListener<S>,
     private val mapping: (O?, Action) -> S?
-) :
-    ResourceEventHandler<O> {
+) : ResourceEventHandler<O> {
 
     override fun onAdd(obj: O?) {
         addEvent(Action.ADD, obj)
@@ -41,7 +41,7 @@ class ResourceEventHandlerAdapter<O : HasMetadata, S : Snapshot>(
     }
 
     private fun addEvent(action: Action, obj: O?) {
-        events.add(ResourceEvent(action, mapping(obj, action)))
+        listener.onEvent(ResourceEvent(action, mapping(obj, action)))
     }
 }
 

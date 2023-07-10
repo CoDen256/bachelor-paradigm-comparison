@@ -3,7 +3,6 @@ package bachelor.core.api
 import bachelor.core.api.snapshot.*
 import bachelor.executor.reactive.ResourceEvent
 import reactor.core.publisher.Flux
-import java.util.concurrent.Future
 
 /**
  * [JobApi] is a simplified Kubernetes API client for managing

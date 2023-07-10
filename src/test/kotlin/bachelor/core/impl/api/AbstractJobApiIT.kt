@@ -23,25 +23,16 @@ abstract class AbstractJobApiIT(
     private val helper = createHelperClient()
     private lateinit var api: JobApi
 
-    private val cachedJobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
-    private val cachedPodEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+    private val jobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
+    private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
-    private val podListener = object : ResourceEventListener<ActivePodSnapshot> {
-        override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
-            cachedPodEvents.add(event)
-        }
-    }
-
-    private val jobListener = object : ResourceEventListener<ActiveJobSnapshot> {
-        override fun onEvent(event: ResourceEvent<ActiveJobSnapshot>) {
-            cachedJobEvents.add(event)
-        }
-    }
+    private val podListener = ResourceEventListener { podEvents.add(it) }
+    private val jobListener = ResourceEventListener { jobEvents.add(it) }
 
     @BeforeEach
     fun setup() {
-        cachedJobEvents.clear()
-        cachedPodEvents.clear()
+        jobEvents.clear()
+        podEvents.clear()
         api = createJobApi(NAMESPACE)
         api.deleteAllJobsAndAwaitNoJobsPresent()
         api.startListeners()
@@ -531,10 +522,10 @@ abstract class AbstractJobApiIT(
     }
 
     private fun collectPodEvents(): List<ResourceEvent<ActivePodSnapshot>> =
-        cachedPodEvents.also { println("------ POD-EVENTS ------") }.onEach { println(it) }
+        podEvents.also { println("------ POD-EVENTS ------") }.onEach { println(it) }
 
     private fun collectJobEvents(): List<ResourceEvent<ActiveJobSnapshot>> =
-        cachedJobEvents.also { println("------ JOB-EVENTS ------") }.onEach { println(it) }
+        jobEvents.also { println("------ JOB-EVENTS ------") }.onEach { println(it) }
 
 
 
