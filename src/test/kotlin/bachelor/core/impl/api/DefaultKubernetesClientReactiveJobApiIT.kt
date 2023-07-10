@@ -1,12 +1,13 @@
 package bachelor.core.impl.api
 
-import bachelor.core.impl.api.default.DefaultKubernetesClientReactiveJobApi
+import bachelor.core.api.ReactiveJobApiAdapter
+import bachelor.core.impl.api.default.DefaultKubernetesClientJobApi
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.util.Config
 import java.util.concurrent.TimeUnit
 
 class DefaultKubernetesClientReactiveJobApiIT : AbstractReactiveJobApiIT({ namespace ->
-    DefaultKubernetesClientReactiveJobApi(createApiClient(), namespace)
+    ReactiveJobApiAdapter(DefaultKubernetesClientJobApi(createApiClient(), namespace))
 }) {
 
     companion object {

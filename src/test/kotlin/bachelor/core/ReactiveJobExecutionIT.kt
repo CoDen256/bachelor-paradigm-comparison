@@ -2,6 +2,7 @@ package bachelor.core
 
 import bachelor.awaitNoPodsPresent
 import bachelor.core.api.ReactiveJobApi
+import bachelor.core.api.ReactiveJobApiAdapter
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.PENDING
 import bachelor.core.api.snapshot.Phase.RUNNING
@@ -9,7 +10,7 @@ import bachelor.core.executor.JobExecutor
 import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.executor.PodTerminatedWithErrorException
-import bachelor.core.impl.api.fabric8.Fabric8ReactiveJobApi
+import bachelor.core.impl.api.fabric8.Fabric8JobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.core.utils.generate.TARGET_JOB
@@ -52,7 +53,7 @@ class ReactiveJobExecutionIT {
 
     @BeforeEach
     fun startup() {
-        api = Fabric8ReactiveJobApi(helper, "executor-test")
+        api = ReactiveJobApiAdapter(Fabric8JobApi(helper, NAMESPACE))
         executor = ReactiveJobExecutor(api)
         runner = KubernetesBasedImageRunner(executor, jobSpecProvider, resolver)
         helper.awaitNoPodsPresent(namespace)

@@ -1,6 +1,7 @@
 package bachelor.core
 
-import bachelor.core.impl.api.fabric8.Fabric8ReactiveJobApi
+import bachelor.core.api.ReactiveJobApiAdapter
+import bachelor.core.impl.api.fabric8.Fabric8JobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.executor.reactive.ReactiveJobExecutor
@@ -16,7 +17,7 @@ class JobExecutionRunner {
 
     private val client = KubernetesClientBuilder().build()
 
-    private val api = Fabric8ReactiveJobApi(client, "calculations")
+    private val api = ReactiveJobApiAdapter(Fabric8JobApi(client, "calculations"))
 
     private val templateLoader = JobTemplateFileLoader(
         File("template.yaml")
