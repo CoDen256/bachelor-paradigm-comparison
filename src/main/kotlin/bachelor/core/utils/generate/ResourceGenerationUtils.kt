@@ -1,7 +1,7 @@
 package bachelor.core.utils.generate
 
 import bachelor.core.api.snapshot.*
-import bachelor.executor.reactive.Action
+import bachelor.core.api.Action
 
 // TODO: extract to class, with field containing fake job and fake pod name
 const val TARGET_JOB = "fake-job" // fake job id

@@ -6,7 +6,7 @@ import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.*
 import bachelor.core.utils.generate.*
-import bachelor.executor.reactive.ResourceEvent
+import bachelor.core.api.ResourceEvent
 import com.google.common.truth.Truth.assertThat
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder

@@ -1,8 +1,8 @@
 package bachelor.core.utils.generate
 
 import bachelor.core.api.snapshot.*
-import bachelor.executor.reactive.Action
-import bachelor.executor.reactive.ResourceEvent
+import bachelor.core.api.Action
+import bachelor.core.api.ResourceEvent
 
 // TODO: extract to class, with field containing job and pod name
 /**

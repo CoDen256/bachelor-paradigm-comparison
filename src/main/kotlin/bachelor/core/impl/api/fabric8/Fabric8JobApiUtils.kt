@@ -1,7 +1,7 @@
 package bachelor.core.impl.api.fabric8
 
 import bachelor.core.api.snapshot.*
-import bachelor.executor.reactive.Action
+import bachelor.core.api.Action
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.ContainerState as KubernetesContainerState

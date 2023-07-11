@@ -10,7 +10,7 @@ import bachelor.core.executor.*
 import bachelor.core.impl.template.*
 import bachelor.core.utils.*
 import bachelor.core.utils.generate.*
-import bachelor.executor.reactive.Action.*
+import bachelor.core.api.Action.*
 import bachelor.millis
 import bachelor.verifyError
 import org.junit.jupiter.api.Assertions.*

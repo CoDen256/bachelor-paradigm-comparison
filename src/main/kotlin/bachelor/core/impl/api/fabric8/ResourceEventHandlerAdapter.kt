@@ -1,8 +1,8 @@
 package bachelor.core.impl.api.fabric8
 
 import bachelor.core.api.ResourceEventHandler
-import bachelor.executor.reactive.Action
-import bachelor.executor.reactive.ResourceEvent
+import bachelor.core.api.Action
+import bachelor.core.api.ResourceEvent
 import bachelor.core.api.snapshot.Snapshot
 import io.fabric8.kubernetes.api.model.HasMetadata
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler as Fabric8ResourceEventHandler

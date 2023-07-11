@@ -7,7 +7,6 @@ import bachelor.core.api.snapshot.*
 import bachelor.core.executor.JobExecutionRequest
 import bachelor.core.executor.JobExecutor
 import bachelor.core.executor.PodNotRunningTimeoutException
-import bachelor.executor.reactive.ResourceEvent
 import java.time.Duration
 import java.util.ArrayList
 import java.util.concurrent.Executors
@@ -17,21 +16,11 @@ import java.util.concurrent.TimeoutException
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
         var job: JobReference? = null
-        val podEvents = ArrayList<PodSnapshot>()
-        podEvents.add(InitialPodSnapshot)
-        val jobEvents = ArrayList<JobSnapshot>()
-        jobEvents.add(InitialJobSnapshot)
+        val podEvents = ArrayList<PodSnapshot>().apply { add(InitialPodSnapshot) }
+        val jobEvents = ArrayList<JobSnapshot>().apply { add(InitialJobSnapshot) }
 
-        val podHandler = object : ResourceEventHandler<ActivePodSnapshot> {
-            override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
-                event.element?.let { podEvents.add(it) }
-            }
-        }
-        val jobHandler = object : ResourceEventHandler<ActiveJobSnapshot> {
-            override fun onEvent(event: ResourceEvent<ActiveJobSnapshot>) {
-                event.element?.let { jobEvents.add(it) }
-            }
-        }
+        val podHandler = ResourceEventHandler<ActivePodSnapshot> { event -> event.element?.let { podEvents.add(it) } }
+        val jobHandler = ResourceEventHandler<ActiveJobSnapshot> { event -> event.element?.let { jobEvents.add(it) } }
         try {
             api.addPodEventHandler(podHandler)
             api.addJobEventHandler(jobHandler)

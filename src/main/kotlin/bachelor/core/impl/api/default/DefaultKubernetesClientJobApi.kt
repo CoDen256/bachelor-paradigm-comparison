@@ -1,7 +1,7 @@
 package bachelor.core.impl.api.default
 
-import bachelor.executor.reactive.Action
-import bachelor.executor.reactive.ResourceEvent
+import bachelor.core.api.Action
+import bachelor.core.api.ResourceEvent
 import bachelor.core.api.JobApi
 import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*

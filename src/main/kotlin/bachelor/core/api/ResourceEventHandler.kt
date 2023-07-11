@@ -1,7 +1,6 @@
 package bachelor.core.api
 
 import bachelor.core.api.snapshot.Snapshot
-import bachelor.executor.reactive.ResourceEvent
 import java.io.Closeable
 
 fun interface ResourceEventHandler<S: Snapshot>: Closeable {

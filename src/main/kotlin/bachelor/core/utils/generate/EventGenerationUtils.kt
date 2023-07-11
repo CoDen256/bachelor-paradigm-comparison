@@ -4,8 +4,8 @@ import bachelor.core.api.snapshot.ContainerState
 import bachelor.core.api.snapshot.Phase
 import bachelor.core.api.snapshot.Snapshot
 import bachelor.core.api.snapshot.UnknownState
-import bachelor.executor.reactive.Action
-import bachelor.executor.reactive.ResourceEvent
+import bachelor.core.api.Action
+import bachelor.core.api.ResourceEvent
 // TODO: extract to class, with field containing job and pod name
 // EVENT GENERATION
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)

@@ -1,4 +1,4 @@
-package bachelor.executor.reactive
+package bachelor.core.api
 
 import bachelor.core.api.snapshot.Snapshot
 

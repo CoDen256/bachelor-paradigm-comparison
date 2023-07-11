@@ -1,7 +1,6 @@
 package bachelor.core.api
 
 import bachelor.core.api.snapshot.*
-import bachelor.executor.reactive.ResourceEvent
 import reactor.core.publisher.Flux
 
 /**

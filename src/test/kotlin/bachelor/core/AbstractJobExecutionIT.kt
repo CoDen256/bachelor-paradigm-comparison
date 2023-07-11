@@ -17,9 +17,9 @@ import bachelor.core.utils.generate.running
 import bachelor.core.utils.generate.terminated
 import bachelor.core.utils.generate.waiting
 import bachelor.createNamespace
-import bachelor.executor.reactive.Action
-import bachelor.executor.reactive.Action.ADD
-import bachelor.executor.reactive.Action.UPDATE
+import bachelor.core.api.Action
+import bachelor.core.api.Action.ADD
+import bachelor.core.api.Action.UPDATE
 import bachelor.getJobs
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.junit.jupiter.api.Assertions.assertTrue
