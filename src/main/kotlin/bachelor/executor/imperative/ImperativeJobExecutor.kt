@@ -1,17 +1,11 @@
 package bachelor.executor.imperative
 
-import bachelor.core.api.JobApi
-import bachelor.core.api.ResourceEventHandler
-import bachelor.core.api.isPodRunningOrTerminated
+import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
-import bachelor.core.executor.JobExecutionRequest
-import bachelor.core.executor.JobExecutor
-import bachelor.core.executor.PodNotRunningTimeoutException
+import bachelor.core.executor.*
 import java.time.Duration
-import java.util.ArrayList
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.*
+import java.util.function.Predicate
 
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
@@ -30,53 +24,108 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             job = api.create(request.jobSpec)
 
 
-            waitUntilPodRunningOrTerminated(podEvents, jobEvents, request.isRunningTimeout)
-            waitUntilPodTerminated(podEvents, jobEvents, request.isTerminatedTimeout)
+            waitUntilPodRunningOrTerminated(request.isRunningTimeout)
+            val pod = waitUntilPodTerminated(request.isTerminatedTimeout)
 
-            verifyTermination(podEvents, jobEvents)
+            verifyTermination(pod.mainContainerState as TerminatedState) // force cast because it was already checked
 
-
-
-            val snapshot = ExecutionSnapshot(
-                Logs.empty(),
-                jobEvents.last(),
-                podEvents.last(),
-            )
-            return snapshot
-        }finally {
+            return lastExecutionSnapshot(jobEvents, podEvents)
+        }catch (e: ExceptionHolder){
+            throw e.supplyException(lastExecutionSnapshot(jobEvents, podEvents))
+        } finally {
             job?.let { api.delete(it) }
             api.removePodEventHandler(podHandler)
             api.removeJobEventHandler(jobHandler)
         }
     }
 
-    private fun waitUntilPodRunningOrTerminated(
-        podEvents: List<PodSnapshot>,
-        jobEvents: List<JobSnapshot>,
-        runningTimeout: Duration
-    ) {
-        Executors.newSingleThreadExecutor().submit {
-            while (podEvents.none { isPodRunningOrTerminated(it) }){ }
-        }.get(runningTimeout.toMillis(), TimeUnit.MILLISECONDS)
+    private fun lastExecutionSnapshot(
+        jobEvents: ArrayList<JobSnapshot>,
+        podEvents: ArrayList<PodSnapshot>,
+    ): ExecutionSnapshot {
+        val podReference = podEvents.lastOrNull()?.let {
+            if (it is ActivePodSnapshot){
+                it.reference()
+            }else null
+        }
+        return ExecutionSnapshot(
+            podReference?.let { Logs(api.getLogs(it)) } ?: Logs.empty(),
+            jobEvents.last(),
+            podEvents.last(),
+        )
     }
 
-    private fun waitUntilPodTerminated(
-        podEvents: ArrayList<PodSnapshot>,
-        jobEvents: ArrayList<JobSnapshot>,
-        terminatedTimeout: Duration
-    ) {
-        try {
+    private fun waitUntilPodRunningOrTerminated(runningTimeout: Duration): ActivePodSnapshot {
+        return waitUntilDone(runningTimeout, checkPodCondition { isPodRunningOrTerminated(it) })
+            ?: throw ExceptionHolder{PodNotRunningTimeoutException(it, runningTimeout)}
+    }
 
-            Executors.newSingleThreadExecutor().submit {
-                while (podEvents.none { isPodRunningOrTerminated(it) }){ }
-            }.get(terminatedTimeout.toMillis(), TimeUnit.MILLISECONDS)
-        }catch (e: TimeoutException){
-            throw PodNotRunningTimeoutException(null!!, null!!)
+    private fun waitUntilPodTerminated(terminatedTimeout: Duration): ActivePodSnapshot {
+        return waitUntilDone(terminatedTimeout, checkPodCondition { isPodTerminated(it) })
+            ?: throw ExceptionHolder{PodNotTerminatedTimeoutException(it, terminatedTimeout)}
+    }
+
+
+    private fun <T> waitUntilDone(duration: Duration, future: Future<T>): T? {
+        return try {
+            if (duration.isNegative) {
+                future.get()
+            } else {
+                future.get(duration.toNanos(), TimeUnit.NANOSECONDS)
+            }
+        } catch (e: TimeoutException) {
+            null
+        } catch (e: ExecutionException) {
+            throw e
+        } catch (e: Exception) {
+            throw e
         }
     }
 
-    private fun verifyTermination(podEvents: ArrayList<PodSnapshot>, jobEvents: ArrayList<JobSnapshot>) {
-        TODO("Not yet implemented")
+    private fun checkPodCondition(condition: Predicate<ActivePodSnapshot>): CompletableFuture<ActivePodSnapshot>{
+        val future = CompletableFuture<ActivePodSnapshot>()
+
+        val listener = ResourceEventHandler<ActivePodSnapshot>{
+            try {
+                if (it.element != null && condition.test(it.element)) {
+                    future.complete(it.element)
+                }
+            } catch (e: Exception) {
+                future.completeExceptionally(e)
+            }
+        }
+        api.addPodEventHandler(listener)
+
+        return future.whenComplete { _, t ->
+            api.removePodEventHandler(listener)
+        }
     }
+
+
+    private fun checkJobCondition(condition: Predicate<ActiveJobSnapshot?>): CompletableFuture<ActiveJobSnapshot>{
+        val future = CompletableFuture<ActiveJobSnapshot>()
+
+        val listener = ResourceEventHandler<ActiveJobSnapshot> {
+            try {
+                if (condition.test(it.element)) {
+                    future.complete(it.element)
+                }
+            } catch (e: Exception) {
+                future.completeExceptionally(e)
+            }
+        }
+        api.addJobEventHandler (listener)
+        return future.whenComplete { _, t ->
+            api.removeJobEventHandler(listener)
+        }
+    }
+
+    private fun verifyTermination(state: TerminatedState) {
+        if (state.exitCode != 0){
+            throw ExceptionHolder{ PodTerminatedWithErrorException(it, state.exitCode)}
+        }
+    }
+
+    class ExceptionHolder(val supplyException: (ExecutionSnapshot) -> Exception): Exception()
 
 }
