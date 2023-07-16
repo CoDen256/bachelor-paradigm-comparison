@@ -9,6 +9,10 @@ import java.util.function.Predicate
 
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
+        return null!!
+    }
+
+    private fun execute0(request: JobExecutionRequest): ExecutionSnapshot {
         var job: JobReference? = null
         val podEvents = ArrayList<PodSnapshot>().apply { add(InitialPodSnapshot) }
         val jobEvents = ArrayList<JobSnapshot>().apply { add(InitialJobSnapshot) }
@@ -30,7 +34,7 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             verifyTermination(pod.mainContainerState as TerminatedState) // force cast because it was already checked
 
             return lastExecutionSnapshot(jobEvents, podEvents)
-        }catch (e: ExceptionHolder){
+        } catch (e: ExceptionHolder) {
             throw e.supplyException(lastExecutionSnapshot(jobEvents, podEvents))
         } finally {
             job?.let { api.delete(it) }

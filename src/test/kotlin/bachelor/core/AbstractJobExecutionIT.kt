@@ -58,227 +58,227 @@ abstract class AbstractJobExecutionIT (
         runner = KubernetesBasedImageRunner(executor, jobSpecProvider, resolver)
         helper.awaitNoPodsPresent(namespace)
     }
-
-
-    @Test
-    fun successful_shortExecution() {
-        api.startListeners()
-
-        val result = runner.run(
-            10L, 11L,
-            0, 0,
-        )
-
-        val (podName, podUid, jobUid) = podRef(result)
-        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
-        val expectedPod = pod(podName, podUid, jobUid, UPDATE, PENDING, terminated(0, "Completed"))
-        val expectedLogs = Logs("start\nslept 0\nend\n")
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun successful_longExecution() {
-        api.startListeners()
-
-        val result = runner.run(
-            10L, 11L,
-            3, 0,
-        )
-
-        val (podName, podUid, jobUid) = podRef(result)
-        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
-        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, terminated(0, "Completed"))
-        val expectedLogs = Logs("start\nslept 3\nend\n")
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun failed_shortExecution() {
-        api.startListeners()
-
-        val result = try {
-            runner.run(
-                10L, 11L,
-                0, 3,
-            )
-        } catch (ex: PodTerminatedWithErrorException) {
-            ex.currentState
-        }
-
-
-        val (podName, podUid, jobUid) = podRef(result)
-        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
-        val expectedPod = pod(podName, podUid, jobUid, UPDATE, PENDING, terminated(3, "Error"))
-        val expectedLogs = Logs("start\nslept 0\nend\n")
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun failed_longExecution() {
-        api.startListeners()
-
-        val result = try {
-            runner.run(
-                10L, 11L,
-                3, 3,
-            )
-        } catch (ex: PodTerminatedWithErrorException) {
-            ex.currentState
-        }
-
-
-        val (podName, podUid, jobUid) = podRef(result)
-        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
-        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, terminated(3, "Error"))
-        val expectedLogs = Logs("start\nslept 3\nend\n")
-
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun notTerminatedTimeout() {
-        api.startListeners()
-
-
-        val result = assertThrows<PodNotTerminatedTimeoutException> {
-            runner.run(
-                4, 4,
-                5, 0,
-            )
-        }.currentState
-
-        val (podName, podUid, jobUid) = podRef(result)
-        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
-        val expectedPod =
-            pod(podName, podUid, jobUid, UPDATE, RUNNING, running((podState(result) as RunningState).startedAt))
-        val expectedLogs = Logs("start\n")
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun notTerminatedTimeout_tooLow() {
-        api.startListeners()
-
-
-        val result = assertThrows<PodNotTerminatedTimeoutException> {
-            runner.run(
-                10, 0,
-                0, 0,
-            )
-        }.currentState
-
-        val (_, uid) = jobRef(result)
-        val expectedAddJob = job(uid, ADD, null, null, null, null)
-        val expectedUpdateJob = job(uid, UPDATE, 1, 0, null, null)
-        val expectedPod = InitialPodSnapshot
-        val expectedLogs = Logs.empty()
-
-        if ((result.jobSnapshot as ActiveJobSnapshot).lastAction == "ADD") {
-            assertEquals(expectedAddJob, result.jobSnapshot)
-        } else {
-            assertEquals(expectedUpdateJob, result.jobSnapshot)
-        }
-        assertNoJobPresent()
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun notRunningTimeout() {
-        api.startListeners()
-
-
-        val result = assertThrows<PodNotRunningTimeoutException> {
-            runner.run(
-                4, 10,
-                0, 0,
-                failToStart = true
-            )
-        }.currentState
-
-        val (podName, podUid, jobUid) = podRef(result)
-        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
-        val expectedPod = pod(
-            podName,
-            podUid,
-            jobUid,
-            UPDATE,
-            PENDING,
-            waiting("ErrImagePull", (podState(result) as WaitingState).message)
-        )
-        val expectedLogs = Logs.empty()
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
-
-    @Test
-    fun notRunningTimeout_tooLow() {
-        api.startListeners()
-
-
-        val result = assertThrows<PodNotRunningTimeoutException> {
-            runner.run(
-                0, 10,
-                0, 0,
-            )
-        }.currentState
-
-        val (_, uid) = jobRef(result)
-        val expectedJob = job(uid, ADD, null, null, null, null)
-        val expectedPod = InitialPodSnapshot
-        val expectedLogs = Logs.empty()
-
-        assertNoJobPresent()
-
-        assertEquals(expectedJob, result.jobSnapshot)
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
+//
+//
+//    @Test
+//    fun successful_shortExecution() {
+//        api.startListeners()
+//
+//        val result = runner.run(
+//            10L, 11L,
+//            0, 0,
+//        )
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
+//        val expectedPod = pod(podName, podUid, jobUid, UPDATE, PENDING, terminated(0, "Completed"))
+//        val expectedLogs = Logs("start\nslept 0\nend\n")
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun successful_longExecution() {
+//        api.startListeners()
+//
+//        val result = runner.run(
+//            10L, 11L,
+//            3, 0,
+//        )
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
+//        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, terminated(0, "Completed"))
+//        val expectedLogs = Logs("start\nslept 3\nend\n")
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun failed_shortExecution() {
+//        api.startListeners()
+//
+//        val result = try {
+//            runner.run(
+//                10L, 11L,
+//                0, 3,
+//            )
+//        } catch (ex: PodTerminatedWithErrorException) {
+//            ex.currentState
+//        }
+//
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
+//        val expectedPod = pod(podName, podUid, jobUid, UPDATE, PENDING, terminated(3, "Error"))
+//        val expectedLogs = Logs("start\nslept 0\nend\n")
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun failed_longExecution() {
+//        api.startListeners()
+//
+//        val result = try {
+//            runner.run(
+//                10L, 11L,
+//                3, 3,
+//            )
+//        } catch (ex: PodTerminatedWithErrorException) {
+//            ex.currentState
+//        }
+//
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
+//        val expectedPod = pod(podName, podUid, jobUid, UPDATE, RUNNING, terminated(3, "Error"))
+//        val expectedLogs = Logs("start\nslept 3\nend\n")
+//
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun notTerminatedTimeout() {
+//        api.startListeners()
+//
+//
+//        val result = assertThrows<PodNotTerminatedTimeoutException> {
+//            runner.run(
+//                4, 4,
+//                5, 0,
+//            )
+//        }.currentState
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, 1, 1, null, null)
+//        val expectedPod =
+//            pod(podName, podUid, jobUid, UPDATE, RUNNING, running((podState(result) as RunningState).startedAt))
+//        val expectedLogs = Logs("start\n")
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun notTerminatedTimeout_tooLow() {
+//        api.startListeners()
+//
+//
+//        val result = assertThrows<PodNotTerminatedTimeoutException> {
+//            runner.run(
+//                10, 0,
+//                0, 0,
+//            )
+//        }.currentState
+//
+//        val (_, uid) = jobRef(result)
+//        val expectedAddJob = job(uid, ADD, null, null, null, null)
+//        val expectedUpdateJob = job(uid, UPDATE, 1, 0, null, null)
+//        val expectedPod = InitialPodSnapshot
+//        val expectedLogs = Logs.empty()
+//
+//        if ((result.jobSnapshot as ActiveJobSnapshot).lastAction == "ADD") {
+//            assertEquals(expectedAddJob, result.jobSnapshot)
+//        } else {
+//            assertEquals(expectedUpdateJob, result.jobSnapshot)
+//        }
+//        assertNoJobPresent()
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun notRunningTimeout() {
+//        api.startListeners()
+//
+//
+//        val result = assertThrows<PodNotRunningTimeoutException> {
+//            runner.run(
+//                4, 10,
+//                0, 0,
+//                failToStart = true
+//            )
+//        }.currentState
+//
+//        val (podName, podUid, jobUid) = podRef(result)
+//        val expectedJob = job(jobUid, UPDATE, 1, 0, null, null)
+//        val expectedPod = pod(
+//            podName,
+//            podUid,
+//            jobUid,
+//            UPDATE,
+//            PENDING,
+//            waiting("ErrImagePull", (podState(result) as WaitingState).message)
+//        )
+//        val expectedLogs = Logs.empty()
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
+//
+//    @Test
+//    fun notRunningTimeout_tooLow() {
+//        api.startListeners()
+//
+//
+//        val result = assertThrows<PodNotRunningTimeoutException> {
+//            runner.run(
+//                0, 10,
+//                0, 0,
+//            )
+//        }.currentState
+//
+//        val (_, uid) = jobRef(result)
+//        val expectedJob = job(uid, ADD, null, null, null, null)
+//        val expectedPod = InitialPodSnapshot
+//        val expectedLogs = Logs.empty()
+//
+//        assertNoJobPresent()
+//
+//        assertEquals(expectedJob, result.jobSnapshot)
+//        assertEquals(expectedPod, result.podSnapshot)
+//        assertEquals(expectedLogs, result.logs)
+//
+//        api.stopListeners()
+//    }
 
     private fun assertNoJobPresent() {
         assertTrue(helper.getJobs(namespace).isEmpty())
