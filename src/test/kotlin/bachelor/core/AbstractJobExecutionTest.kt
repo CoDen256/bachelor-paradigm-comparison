@@ -78,6 +78,40 @@ abstract class AbstractJobExecutionTest (
         verify(api).removePodEventHandler(podHandlerCaptor.value)
     }
 
+    @Test
+    fun givenJobSpecIsInvalid_whenExecuted_thenThrowExceptionAndUnsubscribe() {
+        whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
+
+        assertThrows<InvalidJobSpecException> {
+            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+        }
+
+        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+
+        verify(api).addPodEventHandler(capture(podHandlerCaptor))
+        verify(api).removePodEventHandler(podHandlerCaptor.value)
+
+        verify(api).create(JOB_SPEC)
+    }
+
+    @Test
+    fun givenJobAlreadyExists_whenExecuted_thenThrowExceptionAndUnsubscribe() {
+        whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
+
+        assertThrows<JobAlreadyExistsException> {
+            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+        }
+
+        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+
+        verify(api).addPodEventHandler(capture(podHandlerCaptor))
+        verify(api).removePodEventHandler(podHandlerCaptor.value)
+
+        verify(api).create(JOB_SPEC)
+    }
+
     //    @Test
 //    fun givenInvalidSpecException_whenExecuted_thenThrowInvalidJobSpecException() {
 //        // given
