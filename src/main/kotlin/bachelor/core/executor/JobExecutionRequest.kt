@@ -1,5 +1,6 @@
 package bachelor.core.executor
 
+import java.lang.IllegalStateException
 import java.time.Duration
 
 /**
@@ -17,6 +18,12 @@ data class JobExecutionRequest(
     val isRunningTimeout: Duration,
     val isTerminatedTimeout: Duration
 ) {
+
+    init {
+        require(jobSpec.isEmpty().not()) {"Job spec MUST NOT be empty" }
+        require(!isRunningTimeout.isNegative) {"Running Timeout MUST BE non-negative" }
+        require(!isTerminatedTimeout.isNegative) {"Terminated Timeout MUST BE non-negative" }
+    }
     override fun toString(): String {
         return "$isRunningTimeout|$isTerminatedTimeout|Spec: ${jobSpec.length} bytes"
     }
