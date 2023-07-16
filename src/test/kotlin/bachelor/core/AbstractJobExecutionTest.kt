@@ -1,28 +1,47 @@
 package bachelor.core
 
-import bachelor.core.api.Action
-import bachelor.core.api.JobApi
+import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.JobExecutionRequest
 import bachelor.core.executor.JobExecutor
 import bachelor.core.utils.generate.TARGET_JOB
+import bachelor.millis
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentCaptor
+import org.mockito.Captor
+import org.mockito.Mock
+import org.mockito.invocation.InvocationOnMock
+import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
+import org.mockito.kotlin.capture
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.mockito.stubbing.OngoingStubbing
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 import java.time.Duration
 
-
+@ExtendWith(MockitoExtension::class)
 abstract class AbstractJobExecutionTest (
     val createExecutor: (JobApi) -> JobExecutor
 ){
 
     private val namespace = "ns"
     private val JOB_NAME = TARGET_JOB
-    private val JOB_SPEC = ""
+    private val JOB_SPEC = "spec"
 
+    @Mock
     private lateinit var api: JobApi
+
+    @Captor
+    private lateinit var jobHandlerCaptor: ArgumentCaptor<ResourceEventHandler<ActiveJobSnapshot>>
+
+    @Captor
+    private lateinit var podHandlerCaptor: ArgumentCaptor<ResourceEventHandler<ActivePodSnapshot>>
+
     private lateinit var executor: JobExecutor
 
     @BeforeEach
@@ -30,19 +49,64 @@ abstract class AbstractJobExecutionTest (
         executor = createExecutor(api)
     }
 
-        @Test
-    fun givenInvalidDuration_whenExecuted_thenEmptyExecutionSnapshot() {
+    @Test
+    fun givenFailedToAddJobEventHandler_whenExecuted_thenThrowExceptionAndUnsubscribe() {
+        whenever(api.addJobEventHandler(any())).thenThrow(IllegalArgumentException())
 
-        assertThrows<IllegalArgumentException> {  }
-        val snapshot = executor.execute(
-            JobExecutionRequest(JOB_SPEC,
-                Duration.ofMillis(-1),
-                Duration.ofMillis(-1))
-        )
 
-        //
+        assertThrows<IllegalArgumentException> {
+            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+        }
 
+        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+        verify(api).removePodEventHandler(any())
     }
+
+    @Test
+    fun givenFailedToAddPodEventHandler_whenExecuted_thenThrowExceptionAndUnsubscribe() {
+        whenever(api.addPodEventHandler(any())).thenThrow(IllegalStateException())
+
+        assertThrows<IllegalStateException> {
+            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+        }
+
+        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+
+        verify(api).addPodEventHandler(capture(podHandlerCaptor))
+        verify(api).removePodEventHandler(podHandlerCaptor.value)
+    }
+
+    //    @Test
+//    fun givenInvalidSpecException_whenExecuted_thenThrowInvalidJobSpecException() {
+//        // given
+//        whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
+//
+//        //when, then
+//        assertThrows<InvalidJobSpecException> {
+//            executor.execute(
+//                JobExecutionRequest(JOB_SPEC,
+//                    millis(0),
+//                    millis(0))
+//            )
+//        }
+//    }
+//
+//    @Test
+//    fun givenJobAlreadyExistsException_whenExecuted_thenThrowJobAlreadyExistsException() {
+//        // given
+//        whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
+//
+//        //when, then
+//        assertThrows<JobAlreadyExistsException> {
+//            executor.execute(
+//                JobExecutionRequest(JOB_SPEC,
+//                    millis(0),
+//                    millis(0))
+//            )
+//        }
+//    }
 
 //    @Test
 //    fun givenNoEvents_whenMaxTimeout_thenEmptyExecutionSnapshot() {
@@ -52,8 +116,8 @@ abstract class AbstractJobExecutionTest (
 //        // execute
 //        val snapshot = executor.execute(
 //            JobExecutionRequest(JOB_SPEC,
-//                Duration.ofMillis(-1),
-//                Duration.ofMillis(-1))
+//                millis(-1),
+//                millis(-1))
 //        )
 //
 //        //
@@ -68,8 +132,8 @@ abstract class AbstractJobExecutionTest (
 //        // execute
 //        val snapshot = executor.execute(
 //            JobExecutionRequest(JOB_SPEC,
-//            Duration.ofMillis(-1),
-//                Duration.ofMillis(-1))
+//            millis(-1),
+//                millis(-1))
 //        )
 //
 //        //
@@ -83,8 +147,8 @@ abstract class AbstractJobExecutionTest (
     ): ExecutionSnapshot {
         return execute(JobExecutionRequest(
             JOB_SPEC,
-            Duration.ofMillis(runningTimeout),
-            Duration.ofMillis(terminatedTimeout)
+            millis(runningTimeout),
+            millis(terminatedTimeout)
         ))
     }
 
@@ -114,4 +178,22 @@ abstract class AbstractJobExecutionTest (
         state: ContainerState = UnknownState
     ): ActivePodSnapshot =
         ActivePodSnapshot(name, uid, namespace, jobUid, state, phase, action.name)
+
+    private fun <T> OngoingStubbing<T>.thenCaptureJobHandler(answer: (InvocationOnMock) -> Any): ResourceEventHandler<ActiveJobSnapshot> {
+        var ret: ResourceEventHandler<ActiveJobSnapshot>? = null
+        then {
+            ret = (it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>)
+            answer(it)
+        }
+        return ret!!
+    }
+
+    private fun <T> OngoingStubbing<T>.thenCapturePodHandler(answer: (InvocationOnMock) -> Any): ResourceEventHandler<ActivePodSnapshot> {
+        var ret: ResourceEventHandler<ActivePodSnapshot>? = null
+        then {
+            ret = (it.arguments[0] as ResourceEventHandler<ActivePodSnapshot>)
+            answer(it)
+        }
+        return ret!!
+    }
 }

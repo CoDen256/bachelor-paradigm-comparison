@@ -52,21 +52,21 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
                 jobEventSink.tryEmitComplete()
             }
         }
-        api.addPodEventHandler(podListener)
-        api.addJobEventHandler(jobListener)
+
         val jobSnapshotStream = jobEventSink.asFlux().cache().flatMap { it.element.toMono() }
         val podSnapshotStream = podEventSink.asFlux().cache().flatMap { it.element.toMono() }
 
         fun cleanUp(job: JobReference){
             api.delete(job)
-            jobEventSink.tryEmitComplete()
-            podEventSink.tryEmitComplete()
-            api.removeJobEventHandler(jobListener)
-            api.removePodEventHandler(podListener)
         }
 
         // deserialize job spec, create and run the job in the cluster
-        return createJob(request).flatMap { job ->
+        return Mono.fromCallable {
+            api.addJobEventHandler(jobListener)
+            api.addPodEventHandler(podListener)
+        }
+            .then(Mono.defer { createJob(request) })
+            .flatMap { job ->
             // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
             val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
                 .transform { logAsTimed(it) }
@@ -77,6 +77,11 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
                 .doOnNext { cleanUp(job) }
                 .doOnError { cleanUp(job) }
                 .doOnCancel { cleanUp(job) }
+        }.doOnEach {
+                jobEventSink.tryEmitComplete()
+                podEventSink.tryEmitComplete()
+                api.removeJobEventHandler(jobListener)
+                api.removePodEventHandler(podListener)
         }
     }
 

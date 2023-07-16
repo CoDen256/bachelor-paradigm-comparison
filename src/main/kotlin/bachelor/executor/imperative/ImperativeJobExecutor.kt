@@ -1,6 +1,9 @@
 package bachelor.executor.imperative
 
-import bachelor.core.api.*
+import bachelor.core.api.JobApi
+import bachelor.core.api.ResourceEventHandler
+import bachelor.core.api.isPodRunningOrTerminated
+import bachelor.core.api.isPodTerminated
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import java.time.Duration
@@ -9,7 +12,18 @@ import java.util.function.Predicate
 
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
-        return null!!
+        val listener = ResourceEventHandler<ActiveJobSnapshot> { }
+        val listener2 = ResourceEventHandler<ActivePodSnapshot> { }
+        try {
+
+            api.addJobEventHandler(listener)
+            api.addPodEventHandler(listener2)
+            TODO()
+
+        }finally {
+            api.removeJobEventHandler(listener)
+            api.removePodEventHandler(listener2)
+        }
     }
 
     private fun execute0(request: JobExecutionRequest): ExecutionSnapshot {
