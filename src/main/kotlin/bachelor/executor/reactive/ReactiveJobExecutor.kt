@@ -77,7 +77,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
                 .doOnNext { cleanUp(job) }
                 .doOnError { cleanUp(job) }
                 .doOnCancel { cleanUp(job) }
-        }.doOnEach {
+        }.doOnError {
                 jobEventSink.tryEmitComplete()
                 podEventSink.tryEmitComplete()
                 api.removeJobEventHandler(jobListener)

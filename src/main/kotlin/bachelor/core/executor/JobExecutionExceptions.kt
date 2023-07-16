@@ -10,7 +10,7 @@ import java.time.Duration
  * TerminatedState or RunningState), because it stays in WaitingState or
  * UnknownState for too long
  */
-class PodNotRunningTimeoutException(val currentState: ExecutionSnapshot, timeout: Duration) :
+class PodNotRunningTimeoutException(val currentState: ExecutionSnapshot, val timeout: Duration) :
     ServerException("The pod main container has NOT STARTED within the specified deadline:" +
             " ${timeout.toMillis() / 1000f} s\n${prettyString(currentState)}")
 
@@ -21,7 +21,7 @@ class PodNotRunningTimeoutException(val currentState: ExecutionSnapshot, timeout
  * TerminatedState) and it stays in WaitingState, UnknownState or
  * RunningState for too long
  */
-class PodNotTerminatedTimeoutException(val currentState: ExecutionSnapshot, timeout: Duration) :
+class PodNotTerminatedTimeoutException(val currentState: ExecutionSnapshot, val timeout: Duration) :
     ClientException("The pod main container has NOT TERMINATED within the specified deadline:" +
             " ${timeout.toMillis() / 1000f} s\n${prettyString(currentState)}")
 
@@ -30,7 +30,7 @@ class PodNotTerminatedTimeoutException(val currentState: ExecutionSnapshot, time
  * [PodTerminatedWithErrorException] is thrown, when [Pod] has terminated
  * with a non-zero return value
  */
-class PodTerminatedWithErrorException(val currentState: ExecutionSnapshot, exitCode: Int) :
+class PodTerminatedWithErrorException(val currentState: ExecutionSnapshot, val exitCode: Int) :
     ClientException("The pod has terminated with a NON-ZERO RETURN CODE:" +
             " $exitCode\n${prettyString(currentState)}")
 

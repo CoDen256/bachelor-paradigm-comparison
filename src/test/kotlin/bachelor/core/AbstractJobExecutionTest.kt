@@ -4,6 +4,7 @@ import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.JobExecutionRequest
 import bachelor.core.executor.JobExecutor
+import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.utils.generate.TARGET_JOB
 import bachelor.millis
 import org.junit.jupiter.api.BeforeEach
@@ -23,6 +24,7 @@ import org.mockito.stubbing.OngoingStubbing
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 import java.time.Duration
+import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
 abstract class AbstractJobExecutionTest (
@@ -79,37 +81,62 @@ abstract class AbstractJobExecutionTest (
     }
 
     @Test
-    fun givenJobSpecIsInvalid_whenExecuted_thenThrowExceptionAndUnsubscribe() {
+    fun givenJobSpecIsInvalid_whenExecuted_thenThrowJobSpecIsInvalidExceptionAndUnsubscribe() {
         whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
 
         assertThrows<InvalidJobSpecException> {
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
         }
+        verify(api).create(JOB_SPEC)
 
         verify(api).addJobEventHandler(capture(jobHandlerCaptor))
         verify(api).removeJobEventHandler(jobHandlerCaptor.value)
 
         verify(api).addPodEventHandler(capture(podHandlerCaptor))
         verify(api).removePodEventHandler(podHandlerCaptor.value)
-
-        verify(api).create(JOB_SPEC)
     }
 
     @Test
-    fun givenJobAlreadyExists_whenExecuted_thenThrowExceptionAndUnsubscribe() {
+    fun givenJobAlreadyExists_whenExecuted_thenThrowJobAlreadyExistsExceptionAndUnsubscribe() {
         whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
 
         assertThrows<JobAlreadyExistsException> {
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
         }
 
+
+        verify(api).create(JOB_SPEC)
+
         verify(api).addJobEventHandler(capture(jobHandlerCaptor))
         verify(api).removeJobEventHandler(jobHandlerCaptor.value)
 
         verify(api).addPodEventHandler(capture(podHandlerCaptor))
         verify(api).removePodEventHandler(podHandlerCaptor.value)
+    }
+
+    @Test
+    fun givenNoEvents_whenExecuted_thenThrowPodNotRunningExceptionAndDeleteJobAndUnsubscribe() {
+        val jobRef = JobReference("", "", "")
+        whenever(api.create(JOB_SPEC)).thenReturn(jobRef)
+
+
+        val ex = assertThrows<PodNotRunningTimeoutException> {
+            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+        }
+
+        assertEquals(ex.currentState,
+            ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
+
+        assertEquals(ex.timeout, millis(0))
 
         verify(api).create(JOB_SPEC)
+        verify(api).delete(jobRef)
+
+        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+
+        verify(api).addPodEventHandler(capture(podHandlerCaptor))
+        verify(api).removePodEventHandler(podHandlerCaptor.value)
     }
 
     //    @Test

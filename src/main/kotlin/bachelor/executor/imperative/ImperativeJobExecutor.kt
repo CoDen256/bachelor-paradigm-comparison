@@ -14,12 +14,14 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
         val jobListener = ResourceEventHandler<ActiveJobSnapshot> { }
         val podListener = ResourceEventHandler<ActivePodSnapshot> { }
+        var job: JobReference? = null
         try {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
-            api.create(request.jobSpec)
-            TODO()
+            job = api.create(request.jobSpec)
+            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), request.isRunningTimeout)
         }finally {
+            job?.let { api.delete(it) }
             api.removeJobEventHandler(jobListener)
             api.removePodEventHandler(podListener)
         }
