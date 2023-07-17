@@ -27,11 +27,16 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             val logs = (podSnapshot as? ActivePodSnapshot)?.let { try {
                 api.getLogs(it.reference())
             } catch (e: Exception) {null}}
-            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs(logs),
+            val currentState = ExecutionSnapshot(
+                Logs(logs),
                 jobSnapshot ?: InitialJobSnapshot,
                 podSnapshot ?: InitialPodSnapshot
-            ),
-                request.isRunningTimeout)
+            )
+            if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is RunningState){
+                throw PodNotTerminatedTimeoutException(currentState, request.isTerminatedTimeout)
+            }
+
+            throw PodNotRunningTimeoutException(currentState, request.isRunningTimeout)
         }finally {
             job?.let { api.delete(it) }
             api.removeJobEventHandler(jobListener)
