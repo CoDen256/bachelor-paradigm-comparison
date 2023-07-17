@@ -5,6 +5,7 @@ import bachelor.core.api.snapshot.*
 import bachelor.core.executor.JobExecutionRequest
 import bachelor.core.executor.JobExecutor
 import bachelor.core.executor.PodNotRunningTimeoutException
+import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.utils.generate.*
 import bachelor.millis
 import org.junit.jupiter.api.*
@@ -737,8 +738,8 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Nested
-        @DisplayName("Given late pod events and no logs and no job events When executed Then throw PodNotRunningTimeoutException")
-        inner class GivenLateRunningPodEventsButNoJobEventsAndNoLogs {
+        @DisplayName("Given late running and delayed waiting pod events and no logs and no job events When executed Then throw PodNotRunningTimeoutException")
+        inner class GivenLateRunningPodEventsAndDelayedWaitingEventsButNoJobEventsAndNoLogs {
 
             private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
@@ -759,13 +760,7 @@ abstract class AbstractJobExecutorTest(
             fun setup() {
                 podEvents.clear()
                 whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
-                    Executors.newSingleThreadExecutor().submit {
-                        podEvents.forEach {
-                            handler.onEvent(it)
-                            println("Emitted $it, ${System.currentTimeMillis()}" )
-                            Thread.sleep(intervalMs)
-                        }
-                    }
+                    emitDelayed(podEvents, handler, intervalMs)
                 }
             }
             @Test
@@ -785,10 +780,11 @@ abstract class AbstractJobExecutorTest(
             }
 
             @Test
-            fun `Given delayed waiting pod event Then latest snapshot`() {
+            fun `Given delayed waiting pod event Then latest waiting snapshot`() {
                 podEvents.addAll(listOf(
                     noop(), // 0ms
                     add(waitingSnapshot), // 100ms
+                    add(runningPodSnapshot), // 200ms
                 ))
 
                 // execute
@@ -805,6 +801,7 @@ abstract class AbstractJobExecutorTest(
                 podEvents.addAll(listOf(
                     add(intermediatePodSnapshot), // 0ms
                     add(waitingSnapshot), // 100ms
+                    add(runningPodSnapshot), // 200ms
                 ))
 
                 // execute
@@ -817,11 +814,12 @@ abstract class AbstractJobExecutorTest(
             }
 
             @Test
-            fun `Given three delayed waiting pod events Then waiting pod`() {
+            fun `Given three delayed waiting pod events Then latest waiting snapshot`() {
                 podEvents.addAll(listOf(
                     add(intermediatePodSnapshot), // 0ms
                     add(intermediatePodSnapshot), // 100ms
                     add(waitingSnapshot), // 200ms
+                    add(runningPodSnapshot), // 300ms
                 ))
 
                 // execute
@@ -835,49 +833,62 @@ abstract class AbstractJobExecutorTest(
         }
     }
 
-//        @Nested
-//        @DisplayName("Given running pod events and no logs and no job events When executed Then throw PodNotTerminatedException")
-//        inner class GivenRunningPodEventsButNoJobEventsAndNoLogs {
-//
-//            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
-//
-//            private val intermediatePodSnapshot =
-//                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
-//            private val latestPodSnapshot =
-//                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
-//            private val randomPodSnapshot =
-//                ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
-//
-//            private val podRef = latestPodSnapshot.reference()
-//
-//            @BeforeEach
-//            fun setup() {
-//                podEvents.clear()
-//                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
-//                    podEvents.forEach { handler.onEvent(it) }
-//                }
-//            }
-//            @AfterEach
-//            fun teardown(){
-//                verify(api).getLogs(podRef)
-//            }
-//
-//            @Test
-//            fun `Given running pod event Then latest snapshot`() {
-//                podEvents.addAll(listOf(
-//                    add(latestPodSnapshot),
-//                ))
-//
-//                // execute
-//                val ex = assertThrows<PodNotTerminatedTimeoutException> {
-//                    execute(millis(50), millis(100))
-//                }
-//
-//                assertEquals(snapshot(pod = latestPodSnapshot), ex.currentState)
-//                assertEquals(millis(100), ex.timeout)
-//            }
-//        }
-//    }
+    private fun emitDelayed(
+        resourceEvents: List<ResourceEvent<ActivePodSnapshot>>,
+        handler: ResourceEventHandler<ActivePodSnapshot>,
+        interval: Long
+    ) {
+        Executors.newSingleThreadExecutor().submit {
+            resourceEvents.forEach {
+                handler.onEvent(it)
+                println("Emitted $it, ${System.currentTimeMillis()}")
+                Thread.sleep(interval)
+            }
+        }
+    }
+
+    @Nested
+        @DisplayName("Given running pod events and no logs and no job events When executed Then throw PodNotTerminatedException")
+        inner class GivenRunningPodEventsButNoJobEventsAndNoLogs {
+
+            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
+            private val intermediatePodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
+            private val latestPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
+            private val randomPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
+
+            private val podRef = latestPodSnapshot.reference()
+
+            @BeforeEach
+            fun setup() {
+                podEvents.clear()
+                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
+                    podEvents.forEach { handler.onEvent(it) }
+                }
+            }
+            @AfterEach
+            fun teardown(){
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given running pod event Then latest snapshot`() {
+                podEvents.addAll(listOf(
+                    add(latestPodSnapshot),
+                ))
+
+                // execute
+                val ex = assertThrows<PodNotTerminatedTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(pod = latestPodSnapshot), ex.currentState)
+                assertEquals(millis(100), ex.timeout)
+            }
+        }
 
     private fun execute(
         runningTimeout: Duration = millis(10_000),
