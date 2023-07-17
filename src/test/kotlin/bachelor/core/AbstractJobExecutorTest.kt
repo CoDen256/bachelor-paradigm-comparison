@@ -341,10 +341,12 @@ abstract class AbstractJobExecutorTest(
         }
 
 
+
         @Nested
         @DisplayName("Given no running or terminated pod events and no job events and no logs When executed Then throw PodNotRunningException")
         inner class GivenWaitingPodEventsButNoJobEventsAndNoLogs {
             private val events = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
 
             private val intermediatePodSnapshot =
                 ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.UNKNOWN)
@@ -352,6 +354,9 @@ abstract class AbstractJobExecutorTest(
                 ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.PENDING)
             private val randomPodSnapshot =
                 ActivePodSnapshot("podName", "podUid", "ns", "random", WaitingState("", ""), Phase.RUNNING)
+
+            private val podRef = latestSnapshot.reference()
+
 
             @BeforeEach
             fun setup() {
@@ -386,6 +391,7 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
                 assertEquals(millis(50), ex.timeout)
+                verify(api).getLogs(podRef)
             }
 
 
@@ -417,6 +423,7 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
                 assertEquals(millis(50), ex.timeout)
+                verify(api).getLogs(podRef)
             }
 
             @Test
@@ -453,6 +460,7 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
                 assertEquals(millis(50), ex.timeout)
+                verify(api).getLogs(podRef)
             }
 
             @Test
@@ -471,7 +479,7 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
                 assertEquals(millis(50), ex.timeout)
-
+                verify(api).getLogs(podRef)
             }
 
             @Test
@@ -512,6 +520,8 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
                 assertEquals(millis(50), ex.timeout)
+                verify(api).getLogs(podRef)
+
             }
 
             @Test
@@ -534,12 +544,101 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
                 assertEquals(millis(50), ex.timeout)
+                verify(api).getLogs(podRef)
+
             }
         }
 
         @Nested
-        @DisplayName("Given logs but no pod events and job events and no logs When executed Then throw PodNotRunningException")
-        inner class GivenLogsButNoPodEventsAndNoJobEvents {
+        @DisplayName("Given logs and waiting pod events and no job events When executed Then throw PodNotRunningException")
+        inner class GivenWaitingPodEventsAndLogsButNoJobEvents {
+            private val events = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
+
+            private val intermediatePodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.UNKNOWN)
+            private val latestSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.PENDING)
+            private val randomPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "random", WaitingState("", ""), Phase.RUNNING)
+
+            private val podRef = latestSnapshot.reference()
+
+            @BeforeEach
+            fun setup() {
+                events.clear()
+                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
+                    events.forEach { handler.onEvent(it) }
+                }
+            }
+
+            @Test
+            fun `Given one pod event and empty logs returned Then latest snapshot `() {
+                whenever(api.getLogs(podRef)).thenReturn(null)
+                events.add(add(latestSnapshot))
+
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given one pod event and thrown exception upon retrieving logs Then latest snapshot with empty logs`() {
+                whenever(api.getLogs(podRef)).thenThrow(IllegalStateException())
+                events.add(add(latestSnapshot))
+
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given one pod event and blank logs Then latest snapshot with blank logs`() {
+                whenever(api.getLogs(podRef)).thenReturn("")
+                events.add(add(latestSnapshot))
+
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(logs=Logs(""), pod = latestSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given one pod event and logs Then latest snapshot with logs`() {
+                whenever(api.getLogs(podRef)).thenReturn("logs")
+                events.add(add(latestSnapshot))
+
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(logs=Logs("logs"), pod = latestSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+
+                verify(api).getLogs(podRef)
+            }
 
         }
 

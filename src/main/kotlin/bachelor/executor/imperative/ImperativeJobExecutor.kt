@@ -24,7 +24,10 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             job = api.create(request.jobSpec)
             val jobSnapshot: JobSnapshot? = cachedJobEvents.findLast{ it.element?.uid == job.uid }?.element
             val podSnapshot: PodSnapshot? = cachedPodEvents.findLast { it.element?.controllerUid == job.uid }?.element
-            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs.empty(),
+            val logs = (podSnapshot as? ActivePodSnapshot)?.let { try {
+                api.getLogs(it.reference())
+            } catch (e: Exception) {null}}
+            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs(logs),
                 jobSnapshot ?: InitialJobSnapshot,
                 podSnapshot ?: InitialPodSnapshot
             ),
