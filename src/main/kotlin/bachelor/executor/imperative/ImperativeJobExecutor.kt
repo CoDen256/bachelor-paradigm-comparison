@@ -10,17 +10,24 @@ import java.util.function.Predicate
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
         val events: ArrayList<ResourceEvent<ActiveJobSnapshot>> = ArrayList()
+        var event: ResourceEvent<ActivePodSnapshot>? = null
         var job: JobReference? = null
         val jobListener: ResourceEventHandler<ActiveJobSnapshot> = ResourceEventHandler<ActiveJobSnapshot> {
             events.add(it)
         }
-        val podListener = ResourceEventHandler<ActivePodSnapshot> { }
+        val podListener = ResourceEventHandler<ActivePodSnapshot> {
+            event = it
+        }
         try {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
             job = api.create(request.jobSpec)
             val jobSnapshot: JobSnapshot? = events.findLast{ it.element?.uid == job.uid }?.element
-            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs.empty(), jobSnapshot ?: InitialJobSnapshot, InitialPodSnapshot), request.isRunningTimeout)
+            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs.empty(),
+                jobSnapshot ?: InitialJobSnapshot,
+                event?.element ?: InitialPodSnapshot
+            ),
+                request.isRunningTimeout)
         }finally {
             job?.let { api.delete(it) }
             api.removeJobEventHandler(jobListener)
