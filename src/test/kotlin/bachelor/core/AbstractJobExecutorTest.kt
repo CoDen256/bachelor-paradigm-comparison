@@ -8,6 +8,8 @@ import bachelor.core.executor.PodNotRunningTimeoutException
 import bachelor.core.utils.generate.*
 import bachelor.millis
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -26,7 +28,7 @@ import java.lang.IllegalStateException
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
-abstract class AbstractJobExecutionTest (
+abstract class AbstractJobExecutorTest (
     val createExecutor: (JobApi) -> JobExecutor
 ){
 
@@ -49,6 +51,7 @@ abstract class AbstractJobExecutionTest (
     fun startup() {
         executor = createExecutor(api)
     }
+
 
     @Test
     fun `Given failed to add jobHandler When executed Then throw exception and unsubscribe`() {
@@ -79,6 +82,7 @@ abstract class AbstractJobExecutionTest (
         verify(api).removePodEventHandler(podHandlerCaptor.value)
     }
 
+
     @Test
     fun givenJobSpecIsInvalid_whenExecuted_thenThrowJobSpecIsInvalidExceptionAndUnsubscribe() {
         whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
@@ -94,6 +98,7 @@ abstract class AbstractJobExecutionTest (
         verify(api).removePodEventHandler(podHandlerCaptor.value)
         verify(api).create(JOB_SPEC)
     }
+
 
     @Test
     fun givenJobAlreadyExists_whenExecuted_thenThrowJobAlreadyExistsExceptionAndUnsubscribe() {
@@ -123,7 +128,7 @@ abstract class AbstractJobExecutionTest (
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
         }
 
-        assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), ex.currentState)
+        assertEquals(emptySnapshot(), ex.currentState)
         assertEquals(millis(0), ex.timeout)
 
         verify(api).addJobEventHandler(capture(jobHandlerCaptor))
@@ -156,7 +161,7 @@ abstract class AbstractJobExecutionTest (
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
         }
 
-        assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), ex.currentState)
+        assertEquals(emptySnapshot(), ex.currentState)
         assertEquals(millis(0), ex.timeout)
 
 
@@ -215,8 +220,7 @@ abstract class AbstractJobExecutionTest (
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
         }
 
-        assertEquals(ex.currentState,
-            ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
+        assertEquals(ex.currentState, emptySnapshot())
 
         assertEquals(ex.timeout, millis(0))
 
@@ -279,7 +283,7 @@ abstract class AbstractJobExecutionTest (
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
         }
 
-        assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), ex.currentState)
+        assertEquals(emptySnapshot(), ex.currentState)
         assertEquals(millis(0), ex.timeout)
 
         verify(api).create(JOB_SPEC)
@@ -380,7 +384,7 @@ abstract class AbstractJobExecutionTest (
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
         }
 
-        assertEquals(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), ex.currentState)
+        assertEquals(emptySnapshot(), ex.currentState)
         assertEquals(millis(0), ex.timeout)
 
         verify(api).create(JOB_SPEC)
@@ -392,6 +396,7 @@ abstract class AbstractJobExecutionTest (
         verify(api).addPodEventHandler(capture(podHandlerCaptor))
         verify(api).removePodEventHandler(podHandlerCaptor.value)
     }
+
 
     @Test
     fun `Given multiple target job events When executed Then throw PodNotRunningException with latest snapshot and delete job and unsubscribe`() {
@@ -486,6 +491,8 @@ abstract class AbstractJobExecutionTest (
             millis(terminatedTimeout)
         ))
     }
+
+    private fun emptySnapshot() = ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot)
 
     fun job(
         uid: String,

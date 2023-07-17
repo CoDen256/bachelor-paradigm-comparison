@@ -2,6 +2,6 @@ package bachelor.core
 
 import bachelor.executor.imperative.ImperativeJobExecutor
 
-class ImperativeJobExecutionTest(): AbstractJobExecutionTest(
+class ImperativeJobExecutorTest(): AbstractJobExecutorTest(
     { ImperativeJobExecutor(it) }
 )

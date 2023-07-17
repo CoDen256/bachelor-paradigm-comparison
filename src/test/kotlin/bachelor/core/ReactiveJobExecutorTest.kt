@@ -2,6 +2,6 @@ package bachelor.core
 
 import bachelor.executor.reactive.ReactiveJobExecutor
 
-class ReactiveJobExecutionTest(): AbstractJobExecutionTest(
+class ReactiveJobExecutorTest(): AbstractJobExecutorTest(
     { ReactiveJobExecutor(it) }
 )
