@@ -232,7 +232,7 @@ abstract class AbstractJobExecutorTest(
 
 
         @Test
-        fun `Given one non-target and one target job event Then target job event`() {
+        fun `Given one random and one target job event Then target job event`() {
 
             events.addAll(
                 listOf(
@@ -250,7 +250,7 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Test
-        fun `Given one target and one non-target job event Then target job event`() {
+        fun `Given one target and one random job event Then target job event`() {
 
             events.addAll(
                 listOf(
@@ -269,7 +269,7 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Test
-        fun `Given multiple non-target job events Then empty snapshot`() {
+        fun `Given multiple random job events Then empty snapshot`() {
             events.addAll(
                 listOf(
                     add(randomJobSnapshot),
@@ -309,7 +309,7 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Test
-        fun `Given multiple target and non-target job events Then the latest target snapshot`() {
+        fun `Given multiple target and random job events Then the latest target snapshot`() {
             events.addAll(
                 listOf(
                     upd(randomJobSnapshot),
@@ -341,7 +341,7 @@ abstract class AbstractJobExecutorTest(
 
         private val intermediatePodSnapshot = ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.UNKNOWN)
         private val latestSnapshot = ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.PENDING)
-        private val randomPodSnapshot = ActivePodSnapshot("podName", "podUid", "ns", "random", WaitingState("", ""), Phase.PENDING)
+        private val randomPodSnapshot = ActivePodSnapshot("podName", "podUid", "ns", "random", WaitingState("", ""), Phase.RUNNING)
 
         @BeforeEach
         fun setup() {
@@ -442,7 +442,7 @@ abstract class AbstractJobExecutorTest(
 
 
         @Test
-        fun `Given one non-target and one target pod event Then target pod event`() {
+        fun `Given one random and one target pod event Then target pod event`() {
 
             events.addAll(
                 listOf(
@@ -460,7 +460,7 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Test
-        fun `Given one target and one non-target pod event Then target pod event`() {
+        fun `Given one target and one random pod event Then target pod event`() {
 
             events.addAll(
                 listOf(
@@ -477,68 +477,68 @@ abstract class AbstractJobExecutorTest(
             assertEquals(millis(50), ex.timeout)
 
         }
-//
-//        @Test
-//        fun `Given multiple non-target job events Then empty snapshot`() {
-//            events.addAll(
-//                listOf(
-//                    add(randomJobSnapshot),
-//                    upd(randomJobSnapshot),
-//                    del(randomJobSnapshot),
-//                    upd(job("fake", "fake", Action.ADD, 1,1,1,1)),
-//                    del(randomJobSnapshot),
-//                )
-//            )
-//
-//            val ex = assertThrows<PodNotRunningTimeoutException> {
-//                execute(millis(0), millis(100))
-//            }
-//
-//            assertEquals(emptySnapshot(), ex.currentState)
-//            assertEquals(millis(0), ex.timeout)
-//        }
-//
-//
-//        @Test
-//        fun `Given multiple target job events Then latest snapshot`() {
-//            events.addAll(
-//                listOf(
-//                    add(intermediateJobSnapshot),
-//                    del(intermediateJobSnapshot),
-//                    upd(job("target", "target",  Action.ADD,1, 2, 3, 1)),
-//                    upd(latestSnapshot),
-//                )
-//            )
-//
-//            val ex = assertThrows<PodNotRunningTimeoutException> {
-//                execute(millis(0), millis(100))
-//            }
-//
-//            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
-//            assertEquals(millis(0), ex.timeout)
-//        }
-//
-//        @Test
-//        fun `Given multiple target and non-target job events Then the latest target snapshot`() {
-//            events.addAll(
-//                listOf(
-//                    upd(randomJobSnapshot),
-//                    add(intermediateJobSnapshot),
-//                    del(intermediateJobSnapshot),
-//                    upd(job("target", "target",  Action.ADD,1, 2, 3, 1)),
-//                    upd(randomJobSnapshot),
-//                    upd(latestSnapshot),
-//                    upd(randomJobSnapshot),
-//                )
-//            )
-//
-//            val ex = assertThrows<PodNotRunningTimeoutException> {
-//                execute(millis(0), millis(100))
-//            }
-//
-//            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
-//            assertEquals(millis(0), ex.timeout)
-//        }
+
+        @Test
+        fun `Given multiple random pod events Then empty snapshot`() {
+            events.addAll(
+                listOf(
+                    add(randomPodSnapshot),
+                    upd(randomPodSnapshot),
+                    del(randomPodSnapshot),
+                    upd(pod("fake", "fake", "fake", Action.ADD, Phase.RUNNING, running())),
+                    del(randomPodSnapshot),
+                )
+            )
+
+            val ex = assertThrows<PodNotRunningTimeoutException> {
+                execute(millis(0), millis(100))
+            }
+
+            assertEquals(emptySnapshot(), ex.currentState)
+            assertEquals(millis(0), ex.timeout)
+        }
+
+
+        @Test
+        fun `Given multiple target pod events Then latest snapshot`() {
+            events.addAll(
+                listOf(
+                    add(intermediatePodSnapshot),
+                    del(intermediatePodSnapshot),
+                    upd(pod("podName", "podUid",  "jobUid",Action.ADD, Phase.RUNNING, waiting())),
+                    upd(latestSnapshot),
+                )
+            )
+
+            val ex = assertThrows<PodNotRunningTimeoutException> {
+                execute(millis(50), millis(100))
+            }
+
+            assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
+            assertEquals(millis(50), ex.timeout)
+        }
+
+        @Test
+        fun `Given multiple target and random pod events Then the latest target snapshot`() {
+            events.addAll(
+                listOf(
+                    upd(randomPodSnapshot),
+                    add(intermediatePodSnapshot),
+                    del(intermediatePodSnapshot),
+                    upd(pod("podName", "podUid",  "jobUid",Action.ADD, Phase.RUNNING, waiting())),
+                    upd(randomPodSnapshot),
+                    upd(latestSnapshot),
+                    upd(randomPodSnapshot),
+                )
+            )
+
+            val ex = assertThrows<PodNotRunningTimeoutException> {
+                execute(millis(50), millis(100))
+            }
+
+            assertEquals(snapshot(pod = latestSnapshot), ex.currentState)
+            assertEquals(millis(50), ex.timeout)
+        }
     }
 
 
