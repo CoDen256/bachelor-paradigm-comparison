@@ -179,7 +179,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
 
     private fun logAsTimed(stream: Flux<ExecutionSnapshot>): Flux<ExecutionSnapshot> {
         return if (!logger.isDebugEnabled) stream else stream.timed()
-            .doOnNext { logger.info("(E): ${it.elapsedSinceSubscription().toMillis()}ms - ${it.get()}") }
+            .doOnNext { logger.info("(E): ${it.elapsedSinceSubscription().toMillis()}ms - ${it.get()}. ${System.currentTimeMillis()}") }
             .map { it.get() }
     }
 

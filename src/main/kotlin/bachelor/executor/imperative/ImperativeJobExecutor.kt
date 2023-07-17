@@ -22,6 +22,8 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
             job = api.create(request.jobSpec)
+            Thread.sleep(request.isRunningTimeout.toMillis())
+
             val jobSnapshot: JobSnapshot? = cachedJobEvents.findLast{ it.element?.uid == job.uid }?.element
             val podSnapshot: PodSnapshot? = cachedPodEvents.findLast { it.element?.controllerUid == job.uid }?.element
             val logs = (podSnapshot as? ActivePodSnapshot)?.let { try {
@@ -32,9 +34,10 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
                 jobSnapshot ?: InitialJobSnapshot,
                 podSnapshot ?: InitialPodSnapshot
             )
-            if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is RunningState){
-                throw PodNotTerminatedTimeoutException(currentState, request.isTerminatedTimeout)
-            }
+
+//            if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is RunningState){
+//                throw PodNotTerminatedTimeoutException(currentState, request.isTerminatedTimeout)
+//            }
 
             throw PodNotRunningTimeoutException(currentState, request.isRunningTimeout)
         }finally {
