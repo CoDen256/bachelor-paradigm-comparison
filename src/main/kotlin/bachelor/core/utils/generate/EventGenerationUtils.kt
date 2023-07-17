@@ -10,6 +10,16 @@ import bachelor.core.api.ResourceEvent
 // EVENT GENERATION
 fun <T : Snapshot> noop() = ResourceEvent<T>(Action.NOOP, null)
 
+fun <T: Snapshot> add(snapshot: T) =
+    ResourceEvent(Action.ADD, snapshot)
+
+fun <T: Snapshot> upd (snapshot: T) =
+    ResourceEvent(Action.UPDATE, snapshot)
+
+fun <T: Snapshot> del(snapshot: T) =
+    ResourceEvent(Action.DELETE, snapshot)
+
+
 fun add(phase: Phase, targetState: ContainerState = UnknownState, name: String = TARGET_POD) =
     ResourceEvent(Action.ADD, newPod(Action.ADD, name, phase, TARGET_JOB, targetState))
 

@@ -112,28 +112,6 @@ abstract class AbstractJobExecutorTest(
         verify(api).create(JOB_SPEC)
     }
 
-    @Test
-    fun givenNoEvents_whenExecuted_thenThrowPodNotRunningExceptionAndDeleteJobAndUnsubscribe() {
-        val jobRef = JobReference("", "", "")
-        whenever(api.create(JOB_SPEC)).thenReturn(jobRef)
-
-
-        val ex = assertThrows<PodNotRunningTimeoutException> {
-            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
-        }
-
-        assertEquals(emptySnapshot(), ex.currentState)
-        assertEquals(millis(0), ex.timeout)
-
-        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
-
-        verify(api).addPodEventHandler(capture(podHandlerCaptor))
-        verify(api).removePodEventHandler(podHandlerCaptor.value)
-
-        verify(api).create(JOB_SPEC)
-        verify(api).delete(jobRef)
-    }
 
     @Nested
     @DisplayName("Given no pod events When executed Then throw PodNotRunningException and delete job and unsubscribe")
@@ -141,17 +119,16 @@ abstract class AbstractJobExecutorTest(
 
         private val events = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
         private val jobRef = JobReference("target", "target", "ns")
+
+        private val intermediateJobSnapshot = ActiveJobSnapshot("target", "target", "ns", listOf(), JobStatus(1, 1, 1, 1))
         private val latestSnapshot = ActiveJobSnapshot("target", "target", "ns", listOf(), JobStatus(0, 0, 0, 1))
+        private val randomJobSnapshot = ActiveJobSnapshot("target", "random", "ns", listOf(), JobStatus(0, 0, 0, 1))
 
         @BeforeEach
         fun setup() {
             events.clear()
-            whenever(api.addJobEventHandler(any())).then {
-                val listener = it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
-                events.forEach {
-                    listener.onEvent(it)
-                }
-                null
+            whenever(api.addJobEventHandler(any())).thenWithJobHandler { handler ->
+                events.forEach { handler.onEvent(it) }
             }
             whenever(api.create(JOB_SPEC)).thenReturn(jobRef)
         }
@@ -169,9 +146,17 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Test
+        fun `Given no events Then empty snapshot`() {
+            val ex = assertThrows<PodNotRunningTimeoutException> {
+                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+            }
+            assertEquals(emptySnapshot(), ex.currentState)
+            assertEquals(millis(0), ex.timeout)
+        }
+
+        @Test
         fun `Given noop events Then empty snapshot`() {
-            events.add(noop())
-            events.add(noop())
+            events.addAll(listOf(noop(), noop()))
 
 
             // execute
@@ -186,7 +171,7 @@ abstract class AbstractJobExecutorTest(
 
         @Test
         fun `Given single job event Then single job snapshot`() {
-            events.add(ResourceEvent(Action.UPDATE, latestSnapshot))
+            events.add(upd(latestSnapshot))
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
@@ -199,9 +184,7 @@ abstract class AbstractJobExecutorTest(
 
         @Test
         fun `Given single non target job event Then empty snapshot`() {
-            events.add(ResourceEvent(Action.ADD, ActiveJobSnapshot(
-                "whatever", "w", "w", listOf(), JobStatus(1,1,1,1)
-            )))
+            events.add(add(randomJobSnapshot))
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
@@ -216,11 +199,8 @@ abstract class AbstractJobExecutorTest(
         fun `Given two job events Then latest job event`() {
             events.addAll(
                 listOf(
-                    ResourceEvent(
-                        Action.UPDATE,
-                        ActiveJobSnapshot("target", "target", "ns", listOf(), JobStatus(1, 1, 1, 1))
-                    ),
-                    ResourceEvent(Action.UPDATE, latestSnapshot)
+                    upd(intermediateJobSnapshot),
+                    upd(latestSnapshot)
                 )
             )
 
@@ -234,14 +214,10 @@ abstract class AbstractJobExecutorTest(
 
         @Test
         fun `Given two non target job events Then empty snapshot`() {
-            val jobSnap = ActiveJobSnapshot(
-                "non-target", "non-target", "ns", listOf(), JobStatus(0, 0, 0, 0)
-            )
-
             events.addAll(
                 listOf(
-                    ResourceEvent(Action.UPDATE, jobSnap),
-                    ResourceEvent(Action.ADD, jobSnap)
+                    upd(randomJobSnapshot),
+                    add(randomJobSnapshot)
                 )
             )
 
@@ -253,19 +229,14 @@ abstract class AbstractJobExecutorTest(
             assertEquals(millis(0), ex.timeout)
         }
 
+
         @Test
         fun `Given one non-target and one target job event Then target job event`() {
-            val jobSnap = latestSnapshot
 
             events.addAll(
                 listOf(
-                    ResourceEvent(
-                        Action.UPDATE, ActiveJobSnapshot(
-                            "" +
-                                    "non-target", "non-target", "ns", listOf(), JobStatus(1, 1, 1, 1)
-                        )
-                    ), ResourceEvent(Action.ADD, jobSnap)
-
+                    upd(randomJobSnapshot),
+                    add(latestSnapshot)
                 )
             )
 
@@ -273,21 +244,17 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), jobSnap, InitialPodSnapshot), ex.currentState)
+            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
 
         @Test
         fun `Given one target and one non-target job event Then target job event`() {
-            val jobSnap = latestSnapshot
 
             events.addAll(
                 listOf(
-                    ResourceEvent(Action.ADD, jobSnap),
-                    ResourceEvent(
-                        Action.UPDATE,
-                        ActiveJobSnapshot("non-target", "non-target", "ns", listOf(), JobStatus(1, 1, 1, 1))
-                    )
+                    add(latestSnapshot),
+                    upd(randomJobSnapshot)
                 )
             )
 
@@ -295,25 +262,20 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), jobSnap, InitialPodSnapshot), ex.currentState)
+            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
 
         }
 
         @Test
         fun `Given multiple non-target job events Then empty snapshot`() {
-            val jobSnap = ActiveJobSnapshot(
-                "non-target", "non-target", "ns", listOf(), JobStatus(0, 0, 0, 0)
-            )
             events.addAll(
                 listOf(
-                    ResourceEvent(Action.ADD, jobSnap),
-                    ResourceEvent(Action.UPDATE, jobSnap),
-                    ResourceEvent(Action.DELETE, jobSnap),
-                    ResourceEvent(
-                        Action.UPDATE,
-                        ActiveJobSnapshot("fake-target", "fake-target", "ns", listOf(), JobStatus(1, 1, 1, 1))
-                    ),
+                    add(randomJobSnapshot),
+                    upd(randomJobSnapshot),
+                    del(randomJobSnapshot),
+                    upd(job("fake", "fake", Action.ADD, 1,1,1,1)),
+                    del(randomJobSnapshot),
                 )
             )
 
@@ -328,20 +290,12 @@ abstract class AbstractJobExecutorTest(
 
         @Test
         fun `Given multiple target job events Then latest snapshot`() {
-            val jobSnap = latestSnapshot
-            val previousSnaps = ActiveJobSnapshot(
-                "" +
-                        "target", "target", "ns", listOf(), JobStatus(1, 1, 1, 1)
-            )
             events.addAll(
                 listOf(
-                    ResourceEvent(Action.ADD, previousSnaps),
-                    ResourceEvent(Action.DELETE, previousSnaps),
-                    ResourceEvent(
-                        Action.UPDATE,
-                        ActiveJobSnapshot("target", "target", "ns", listOf(), JobStatus(1, 2, 3, 1))
-                    ),
-                    ResourceEvent(Action.UPDATE, jobSnap),
+                    add(intermediateJobSnapshot),
+                    del(intermediateJobSnapshot),
+                    upd(job("target", "target",  Action.ADD,1, 2, 3, 1)),
+                    upd(latestSnapshot),
                 )
             )
 
@@ -349,32 +303,21 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), jobSnap, InitialPodSnapshot), ex.currentState)
+            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
 
         @Test
         fun `Given multiple target and non-target job events Then the latest target snapshot`() {
-            val jobSnap = latestSnapshot
-            val previousSnaps = ActiveJobSnapshot(
-                "target", "target", "ns", listOf(), JobStatus(1, 1, 1, 1)
-            )
-            val fakeSnap = ActiveJobSnapshot(
-                "fake-target", "fake-target", "ns", listOf(), JobStatus(1, 1, 1, 1)
-            )
-
             events.addAll(
                 listOf(
-                    ResourceEvent(Action.UPDATE, fakeSnap),
-                    ResourceEvent(Action.ADD, previousSnaps),
-                    ResourceEvent(Action.DELETE, previousSnaps),
-                    ResourceEvent(
-                        Action.UPDATE,
-                        ActiveJobSnapshot("target", "target", "ns", listOf(), JobStatus(1, 2, 3, 1))
-                    ),
-                    ResourceEvent(Action.UPDATE, fakeSnap),
-                    ResourceEvent(Action.UPDATE, jobSnap),
-                    ResourceEvent(Action.UPDATE, fakeSnap),
+                    upd(randomJobSnapshot),
+                    add(intermediateJobSnapshot),
+                    del(intermediateJobSnapshot),
+                    upd(job("target", "target",  Action.ADD,1, 2, 3, 1)),
+                    upd(randomJobSnapshot),
+                    upd(latestSnapshot),
+                    upd(randomJobSnapshot),
                 )
             )
 
@@ -382,7 +325,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), jobSnap, InitialPodSnapshot), ex.currentState)
+            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
     }
@@ -403,6 +346,7 @@ abstract class AbstractJobExecutorTest(
     private fun emptySnapshot() = ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot)
 
     fun job(
+        name: String,
         uid: String,
         action: Action,
         active: Int? = null,
@@ -460,7 +404,6 @@ abstract class AbstractJobExecutorTest(
         }
         return ret!!
     }
-
 
 
 }
