@@ -19,6 +19,7 @@ import org.mockito.kotlin.capture
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
+import java.time.Duration
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
@@ -63,7 +64,7 @@ abstract class AbstractJobExecutorTest(
 
 
             assertThrows<IllegalArgumentException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+                executor.execute(millis(0), millis(0))
             }
 
             verify(api).removePodEventHandler(any())
@@ -74,7 +75,7 @@ abstract class AbstractJobExecutorTest(
             whenever(api.addPodEventHandler(any())).thenThrow(IllegalStateException())
 
             assertThrows<IllegalStateException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+                executor.execute(millis(0), millis(0))
             }
 
             verify(api).addPodEventHandler(capture(podHandlerCaptor))
@@ -87,7 +88,7 @@ abstract class AbstractJobExecutorTest(
             whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
 
             assertThrows<InvalidJobSpecException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+                executor.execute(millis(0), millis(0))
             }
 
             verify(api).addPodEventHandler(capture(podHandlerCaptor))
@@ -102,7 +103,7 @@ abstract class AbstractJobExecutorTest(
             whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
 
             assertThrows<JobAlreadyExistsException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+                executor.execute(millis(0), millis(0))
             }
 
             verify(api).addPodEventHandler(capture(podHandlerCaptor))
@@ -148,7 +149,7 @@ abstract class AbstractJobExecutorTest(
         @Test
         fun `Given no events Then empty snapshot`() {
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
             assertEquals(emptySnapshot(), ex.currentState)
             assertEquals(millis(0), ex.timeout)
@@ -161,7 +162,7 @@ abstract class AbstractJobExecutorTest(
 
             // execute
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(emptySnapshot(), ex.currentState)
@@ -174,7 +175,7 @@ abstract class AbstractJobExecutorTest(
             events.add(upd(latestSnapshot))
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(snapshot(job = latestSnapshot), ex.currentState)
@@ -187,7 +188,7 @@ abstract class AbstractJobExecutorTest(
             events.add(add(randomJobSnapshot))
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(emptySnapshot(), ex.currentState)
@@ -205,7 +206,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(snapshot(job = latestSnapshot), ex.currentState)
@@ -222,7 +223,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(emptySnapshot(), ex.currentState)
@@ -241,7 +242,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(snapshot(job = latestSnapshot), ex.currentState)
@@ -259,7 +260,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(snapshot(job = latestSnapshot), ex.currentState)
@@ -280,7 +281,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(emptySnapshot(), ex.currentState)
@@ -300,7 +301,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(snapshot(job = latestSnapshot), ex.currentState)
@@ -322,7 +323,7 @@ abstract class AbstractJobExecutorTest(
             )
 
             val ex = assertThrows<PodNotRunningTimeoutException> {
-                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+                executor.execute(millis(0), millis(100))
             }
 
             assertEquals(snapshot(job = latestSnapshot), ex.currentState)
@@ -330,15 +331,17 @@ abstract class AbstractJobExecutorTest(
         }
     }
 
+
+
     private fun JobExecutor.execute(
-        runningTimeout: Long = 10_000,
-        terminatedTimeout: Long = 10_000,
+        runningTimeout: Duration = millis(10_000),
+        terminatedTimeout: Duration = millis(10_000),
     ): ExecutionSnapshot {
         return execute(
             JobExecutionRequest(
                 JOB_SPEC,
-                millis(runningTimeout),
-                millis(terminatedTimeout)
+                runningTimeout,
+                terminatedTimeout
             )
         )
     }
