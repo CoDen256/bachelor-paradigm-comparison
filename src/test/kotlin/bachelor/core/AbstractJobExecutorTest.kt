@@ -47,69 +47,69 @@ abstract class AbstractJobExecutorTest(
     }
 
 
-    @Test
-    fun `Given failed to add jobHandler When executed Then throw exception and unsubscribe`() {
-        whenever(api.addJobEventHandler(any())).thenThrow(IllegalArgumentException())
+    @Nested
+    @DisplayName("Given failed before or upon job creation When executed Then throw exception and unsubscribe")
+    inner class GivenFailBeforeJobCreation{
 
-
-        assertThrows<IllegalArgumentException> {
-            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+        @AfterEach
+        fun teardown() {
+            verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+            verify(api).removeJobEventHandler(jobHandlerCaptor.value)
         }
 
-        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
-        verify(api).removePodEventHandler(any())
-    }
+        @Test
+        fun `Given failed to add job handler Then rethrow and unsubscribe`() {
+            whenever(api.addJobEventHandler(any())).thenThrow(IllegalArgumentException())
 
-    @Test
-    fun givenFailedToAddPodEventHandler_whenExecuted_thenThrowExceptionAndUnsubscribe() {
-        whenever(api.addPodEventHandler(any())).thenThrow(IllegalStateException())
 
-        assertThrows<IllegalStateException> {
-            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+            assertThrows<IllegalArgumentException> {
+                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+            }
+
+            verify(api).removePodEventHandler(any())
         }
 
-        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+        @Test
+        fun `Given failed to add pod handler Then rethrow and unsubscribe`() {
+            whenever(api.addPodEventHandler(any())).thenThrow(IllegalStateException())
 
-        verify(api).addPodEventHandler(capture(podHandlerCaptor))
-        verify(api).removePodEventHandler(podHandlerCaptor.value)
-    }
+            assertThrows<IllegalStateException> {
+                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+            }
 
-
-    @Test
-    fun givenJobSpecIsInvalid_whenExecuted_thenThrowJobSpecIsInvalidExceptionAndUnsubscribe() {
-        whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
-
-        assertThrows<InvalidJobSpecException> {
-            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
-        }
-
-        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
-
-        verify(api).addPodEventHandler(capture(podHandlerCaptor))
-        verify(api).removePodEventHandler(podHandlerCaptor.value)
-        verify(api).create(JOB_SPEC)
-    }
-
-
-    @Test
-    fun givenJobAlreadyExists_whenExecuted_thenThrowJobAlreadyExistsExceptionAndUnsubscribe() {
-        whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
-
-        assertThrows<JobAlreadyExistsException> {
-            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+            verify(api).addPodEventHandler(capture(podHandlerCaptor))
+            verify(api).removePodEventHandler(podHandlerCaptor.value)
         }
 
 
-        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+        @Test
+        fun `Given invalid job spec Then rethrow and unsubscribe`() {
+            whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
 
-        verify(api).addPodEventHandler(capture(podHandlerCaptor))
-        verify(api).removePodEventHandler(podHandlerCaptor.value)
+            assertThrows<InvalidJobSpecException> {
+                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+            }
 
-        verify(api).create(JOB_SPEC)
+            verify(api).addPodEventHandler(capture(podHandlerCaptor))
+            verify(api).removePodEventHandler(podHandlerCaptor.value)
+
+            verify(api).create(JOB_SPEC)
+        }
+
+
+        @Test
+        fun `Given job already exists Then rethrow and unsubscribe`() {
+            whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
+
+            assertThrows<JobAlreadyExistsException> {
+                executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(0)))
+            }
+
+            verify(api).addPodEventHandler(capture(podHandlerCaptor))
+            verify(api).removePodEventHandler(podHandlerCaptor.value)
+
+            verify(api).create(JOB_SPEC)
+        }
     }
 
 
@@ -177,7 +177,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
+            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
 
@@ -208,7 +208,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
+            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
 
@@ -244,7 +244,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
+            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
 
@@ -262,7 +262,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
+            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
 
         }
@@ -303,7 +303,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
+            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
 
@@ -325,7 +325,7 @@ abstract class AbstractJobExecutorTest(
                 executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
             }
 
-            assertEquals(ExecutionSnapshot(Logs.empty(), latestSnapshot, InitialPodSnapshot), ex.currentState)
+            assertEquals(snapshot(job = latestSnapshot), ex.currentState)
             assertEquals(millis(0), ex.timeout)
         }
     }
@@ -344,6 +344,11 @@ abstract class AbstractJobExecutorTest(
     }
 
     private fun emptySnapshot() = ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot)
+    private fun snapshot(
+        logs: Logs = Logs.empty(),
+        job: JobSnapshot = InitialJobSnapshot,
+        pod: PodSnapshot = InitialPodSnapshot
+    ) = ExecutionSnapshot (logs, job, pod)
 
     fun job(
         name: String,
