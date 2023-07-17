@@ -176,7 +176,7 @@ abstract class AbstractJobExecutionTest (
 
     @Test
     fun givenSingleJobEvent_whenExecuted_thenThrowPodNotRunningExceptionWithSingleJobEventAndDeleteJobAndUnsubscribe() {
-        val jobRef = JobReference("target", "target", "")
+        val jobRef = JobReference("target", "target", "ns")
         val jobSnap = ActiveJobSnapshot(
             "target", "target", "ns", listOf(), JobStatus(1, 1, 1, 1)
         )
@@ -191,8 +191,8 @@ abstract class AbstractJobExecutionTest (
             executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
         }
 
-        assertEquals(ex.currentState, ExecutionSnapshot(Logs.empty(), jobSnap, InitialPodSnapshot))
-        assertEquals(ex.timeout, millis(0))
+        assertEquals(ExecutionSnapshot(Logs.empty(), jobSnap, InitialPodSnapshot), ex.currentState)
+        assertEquals(millis(0), ex.timeout)
 
         verify(api).create(JOB_SPEC)
         verify(api).delete(jobRef)
@@ -205,34 +205,34 @@ abstract class AbstractJobExecutionTest (
     }
 
 
-//    @Test
-//    fun givenNonTargetJobEvents_whenExecuted_thenThrowPodNotRunningExceptionAndDeleteJobAndUnsubscribe() {
-//        val jobRef = JobReference("target", "target", "target")
-//        whenever(api.create(JOB_SPEC)).thenReturn(jobRef)
-//        whenever(api.addJobEventHandler(any())).then {
-//            val listener = it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
-//            listener.onEvent(add(0, 0, 0, 0, listOf(), "whatever"))
-//            null
-//        }
-//
-//        val ex = assertThrows<PodNotRunningTimeoutException> {
-//            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
-//        }
-//
-//        assertEquals(ex.currentState,
-//            ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
-//
-//        assertEquals(ex.timeout, millis(0))
-//
-//        verify(api).create(JOB_SPEC)
-//        verify(api).delete(jobRef)
-//
-//        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-//        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
-//
-//        verify(api).addPodEventHandler(capture(podHandlerCaptor))
-//        verify(api).removePodEventHandler(podHandlerCaptor.value)
-//    }
+    @Test
+    fun givenSingleNonTargetJobEvent_whenExecuted_thenThrowPodNotRunningExceptionWithEmptySnapshotAndDeleteJobAndUnsubscribe() {
+        val jobRef = JobReference("target", "target", "target")
+        whenever(api.create(JOB_SPEC)).thenReturn(jobRef)
+        whenever(api.addJobEventHandler(any())).then {
+            val listener = it.arguments[0] as ResourceEventHandler<ActiveJobSnapshot>
+            listener.onEvent(add(0, 0, 0, 0, listOf(), "whatever-name"))
+            null
+        }
+
+        val ex = assertThrows<PodNotRunningTimeoutException> {
+            executor.execute(JobExecutionRequest(JOB_SPEC, millis(0), millis(100)))
+        }
+
+        assertEquals(ex.currentState,
+            ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot))
+
+        assertEquals(ex.timeout, millis(0))
+
+        verify(api).create(JOB_SPEC)
+        verify(api).delete(jobRef)
+
+        verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+        verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+
+        verify(api).addPodEventHandler(capture(podHandlerCaptor))
+        verify(api).removePodEventHandler(podHandlerCaptor.value)
+    }
 
     private fun JobExecutor.execute(
         runningTimeout: Long = 10_000,
