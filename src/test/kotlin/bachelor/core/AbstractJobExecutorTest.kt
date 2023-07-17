@@ -343,7 +343,7 @@ abstract class AbstractJobExecutorTest(
 
 
         @Nested
-        @DisplayName("Given no running or terminated pod events and no job events and no logs When executed Then throw PodNotRunningException")
+        @DisplayName("Given waiting pod events and no job events and no logs When executed Then throw PodNotRunningException")
         inner class GivenWaitingPodEventsButNoJobEventsAndNoLogs {
             private val events = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
@@ -550,7 +550,7 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Nested
-        @DisplayName("Given logs and waiting pod events and no job events When executed Then throw PodNotRunningException")
+        @DisplayName("Given waiting pod events and logs and no job events When executed Then throw PodNotRunningException")
         inner class GivenWaitingPodEventsAndLogsButNoJobEvents {
             private val events = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
@@ -640,6 +640,99 @@ abstract class AbstractJobExecutorTest(
                 verify(api).getLogs(podRef)
             }
 
+            @Test
+            fun `Given multiple pod events and logs Then latest snapshot with logs`() {
+                whenever(api.getLogs(podRef)).thenReturn("logs")
+                events.add(add(intermediatePodSnapshot))
+                events.add(upd(intermediatePodSnapshot))
+                events.add(del(latestSnapshot))
+                events.add(add(randomPodSnapshot))
+
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(logs=Logs("logs"), pod = latestSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+
+                verify(api).getLogs(podRef)
+            }
+
+        }
+
+        @Nested
+        @DisplayName("Given waiting pod events and logs and job events When executed Then throw PodNotRunningException")
+        inner class GivenWaitingPodEventsAndLogsAndJobEvents {
+
+            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
+            private val intermediatePodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.UNKNOWN)
+            private val latestPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", WaitingState("", ""), Phase.PENDING)
+            private val randomPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "random", WaitingState("", ""), Phase.RUNNING)
+
+            private val podRef = latestPodSnapshot.reference()
+
+            private val jobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
+
+            private val intermediateJobSnapshot =
+                ActiveJobSnapshot("jobName", "jobUid", "ns", listOf(), JobStatus(1, 1, 1, 1))
+            private val latestJobSnapshot = ActiveJobSnapshot("jobName", "jobUid", "ns", listOf(), JobStatus(0, 0, 0, 1))
+            private val randomJobSnapshot = ActiveJobSnapshot("jobName", "random", "ns", listOf(), JobStatus(0, 0, 0, 1))
+
+            @BeforeEach
+            fun setup() {
+                jobEvents.clear()
+                whenever(api.addJobEventHandler(any())).thenWithJobHandler { handler ->
+                    jobEvents.forEach { handler.onEvent(it) }
+                }
+
+                podEvents.clear()
+                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
+                    podEvents.forEach { handler.onEvent(it) }
+                }
+
+            }
+            @Test
+            fun `Given multiple target and random pod and job events and logs Then latest snapshot with logs`() {
+                whenever(api.getLogs(podRef)).thenReturn("logs")
+
+                jobEvents.addAll(listOf(
+                    add(intermediateJobSnapshot),
+                    add(randomJobSnapshot),
+                    add(intermediateJobSnapshot),
+                    add(intermediateJobSnapshot),
+                    add(latestJobSnapshot),
+                    add(randomJobSnapshot),
+                ))
+
+                podEvents.addAll(listOf(
+                    add(intermediatePodSnapshot),
+                    add(randomPodSnapshot),
+                    add(intermediatePodSnapshot),
+                    add(intermediatePodSnapshot),
+                    add(latestPodSnapshot),
+                    add(randomPodSnapshot),
+                ))
+
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(
+                    logs=Logs("logs"),
+                    pod = latestPodSnapshot,
+                    job = latestJobSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+
+                verify(api).getLogs(podRef)
+            }
         }
 
     }
