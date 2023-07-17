@@ -1,9 +1,6 @@
 package bachelor.executor.imperative
 
-import bachelor.core.api.JobApi
-import bachelor.core.api.ResourceEventHandler
-import bachelor.core.api.isPodRunningOrTerminated
-import bachelor.core.api.isPodTerminated
+import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import java.time.Duration
@@ -12,14 +9,17 @@ import java.util.function.Predicate
 
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
-        val jobListener = ResourceEventHandler<ActiveJobSnapshot> { }
+        var event: ResourceEvent<ActiveJobSnapshot>? = null
+        val jobListener = ResourceEventHandler<ActiveJobSnapshot> {
+            event = it
+        }
         val podListener = ResourceEventHandler<ActivePodSnapshot> { }
         var job: JobReference? = null
         try {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
             job = api.create(request.jobSpec)
-            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot), request.isRunningTimeout)
+            throw PodNotRunningTimeoutException(ExecutionSnapshot(Logs.empty(), event?.element ?: InitialJobSnapshot , InitialPodSnapshot), request.isRunningTimeout)
         }finally {
             job?.let { api.delete(it) }
             api.removeJobEventHandler(jobListener)
