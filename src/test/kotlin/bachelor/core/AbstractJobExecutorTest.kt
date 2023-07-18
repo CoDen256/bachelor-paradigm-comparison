@@ -935,7 +935,6 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given delayed running and late terminated pod event Then the running snapshot`() {
-                Thread.sleep(10000)
                 podEvents.addAll(listOf(
                     add(waitingPodSnapshot), // 0ms
                     add(runningPodSnapshot), // 100ms
@@ -1187,7 +1186,6 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
-                Thread.sleep(10000)
                 podEvents.addAll(listOf(
                     // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
                     add(runningPodSnapshot), // 0ms

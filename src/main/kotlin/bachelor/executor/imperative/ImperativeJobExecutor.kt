@@ -25,17 +25,22 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             job = api.create(request.jobSpec)
 
 
-            waitUntilDone(request.isRunningTimeout, checkPodCondition(request.isRunningTimeout, "running", cachedPodEvents, )
+            waitUntilDone(checkPodCondition(request.isRunningTimeout, "running", cachedPodEvents, )
             {list -> list.any { it.mainContainerState is RunningState || it.mainContainerState is TerminatedState }
             })
+            val future = checkPodCondition(
+                request.isTerminatedTimeout,
+                "termin",
+                cachedPodEvents
+            ) { list -> list.any { it.mainContainerState is TerminatedState } }
 
             val (podSnapshot: PodSnapshot?, currentState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
 
             if (podSnapshot is ActivePodSnapshot && (podSnapshot.mainContainerState is RunningState)){
                 println("OOPSIE $podSnapshot")
-                val done = waitUntilDone(request.isTerminatedTimeout - request.isRunningTimeout,
-                    checkPodCondition(request.isTerminatedTimeout - request.isRunningTimeout,"termin", cachedPodEvents) {list -> list.any { it.mainContainerState is TerminatedState } })
+
+                val done = waitUntilDone(future)
                 val (newPodSnapshot: PodSnapshot?, newState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
                 if (newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState !is TerminatedState) {
@@ -100,13 +105,9 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     }
 
 
-    private fun <T> waitUntilDone(duration: Duration, future: Future<T>): T? {
+    private fun <T> waitUntilDone(future: Future<T>): T? {
         return try {
-            if (duration.isNegative) {
-                future.get()
-            } else {
-                future.get(duration.toNanos(), TimeUnit.NANOSECONDS)
-            }
+            future.get()
         } catch (e: TimeoutException) {
             future.cancel(true)
             null
@@ -130,11 +131,11 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
                 Thread.sleep(10)
             }
             if (future.isCancelled){
-                println("Cancelled!!")
+                println("Cancelled!! $name")
             }else if (future.isCompletedExceptionally) {
-                println("EXCEPTIONALLY")
+                println("EXCEPTIONALLY $name")
             }else{
-                println("FINISHED ${events.map { it.element }}")
+                println("FINISHED $name ${events.map { it.element }}")
             }
             events.map { it.element }
         }
