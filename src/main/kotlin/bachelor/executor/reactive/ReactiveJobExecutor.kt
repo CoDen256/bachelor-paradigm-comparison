@@ -77,12 +77,23 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
                 .doOnNext { cleanUp(job) }
                 .doOnError { cleanUp(job) }
                 .doOnCancel { cleanUp(job) }
-        }.doOnEach {
+        }.doOnError {
                 jobEventSink.tryEmitComplete()
                 podEventSink.tryEmitComplete()
                 api.removeJobEventHandler(jobListener)
                 api.removePodEventHandler(podListener)
-        }
+        }.doOnNext {
+                jobEventSink.tryEmitComplete()
+                podEventSink.tryEmitComplete()
+                api.removeJobEventHandler(jobListener)
+                api.removePodEventHandler(podListener)
+            }
+            .doOnCancel {
+                jobEventSink.tryEmitComplete()
+                podEventSink.tryEmitComplete()
+                api.removeJobEventHandler(jobListener)
+                api.removePodEventHandler(podListener)
+            }
     }
 
     private fun createJob(request: JobExecutionRequest): Mono<JobReference> {

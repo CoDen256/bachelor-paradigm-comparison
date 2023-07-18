@@ -9,8 +9,8 @@ import java.util.function.Predicate
 
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
-        val cachedJobEvents = ArrayList<ResourceEvent<ActiveJobSnapshot>>()
-        val cachedPodEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+        val cachedJobEvents = ConcurrentLinkedQueue<ResourceEvent<ActiveJobSnapshot>>() // should it be here?
+        val cachedPodEvents = ConcurrentLinkedQueue<ResourceEvent<ActivePodSnapshot>>()
         var job: JobReference? = null
         val jobListener = ResourceEventHandler {
             cachedJobEvents.add(it)
@@ -36,6 +36,9 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             )
 
             if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is TerminatedState){
+                if (podSnapshot.mainContainerState.exitCode == 0){
+                    return currentState
+                }
                 throw PodTerminatedWithErrorException(currentState, podSnapshot.mainContainerState.exitCode)
             }
 

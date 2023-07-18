@@ -932,7 +932,7 @@ abstract class AbstractJobExecutorTest(
             }
 
             @Test
-            fun `Given delayed running pod event Then the running snapshot`() {
+            fun `Given delayed running and late terminated pod event Then the running snapshot`() {
                 podEvents.addAll(listOf(
                     add(waitingPodSnapshot), // 0ms
                     add(runningPodSnapshot), // 100ms
@@ -951,7 +951,7 @@ abstract class AbstractJobExecutorTest(
             }
         }
         @Nested
-        @DisplayName("Given delayed running pod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
+        @DisplayName("Given FailedTerminatedPod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
         inner class GivenFailedTerminatedPodEventsButNoJobEventsAndNoLogs {
 
             private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
@@ -964,6 +964,7 @@ abstract class AbstractJobExecutorTest(
                 ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
             private val terminatedPodSnapshot =
                 ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(1), Phase.RUNNING)
+
 
             private val randomPodSnapshot =
                 ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
@@ -988,6 +989,21 @@ abstract class AbstractJobExecutorTest(
             @Test
             fun `Given failed terminated pod event Then the terminated snapshot`() {
                 podEvents.addAll(listOf(
+                    add(terminatedPodSnapshot)
+                ))
+
+                // execute
+                val ex = assertThrows<PodTerminatedWithErrorException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(pod = terminatedPodSnapshot), ex.currentState)
+                assertEquals(1, ex.exitCode)
+            }
+
+            @Test
+            fun `Given failed terminated pod event and other events Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
                     add(waitingPodSnapshot),
                     add(runningPodSnapshot),
                     add(terminatedPodSnapshot)
@@ -1000,6 +1016,59 @@ abstract class AbstractJobExecutorTest(
 
                 assertEquals(snapshot(pod = terminatedPodSnapshot), ex.currentState)
                 assertEquals(1, ex.exitCode)
+            }
+        }
+
+        @Nested
+        @DisplayName("Given delayed running pod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
+        inner class GivenSuccessfullyTerminatedPodEventsButNoJobEventsAndNoLogs {
+
+            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
+            private val waitingPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
+            private val intermediateRunningPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.PENDING)
+            private val runningPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
+            private val terminatedPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(1), Phase.RUNNING)
+            private val succeededPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(0), Phase.RUNNING)
+
+
+            private val randomPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
+
+            private val podRef = runningPodSnapshot.reference()
+
+
+            @BeforeEach
+            fun setup() {
+                podEvents.clear()
+                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
+                    podEvents.forEach {
+                        handler.onEvent(it)
+                    }
+                }
+            }
+            @AfterEach
+            fun teardown(){
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given failed terminated pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    add(succeededPodSnapshot)
+                ))
+
+                // execute
+
+                val result = execute(millis(50), millis(100))
+
+
+                assertEquals(snapshot(pod = succeededPodSnapshot), result)
             }
         }
 
