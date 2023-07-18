@@ -1146,6 +1146,47 @@ abstract class AbstractJobExecutorTest(
             }
 
             @Test
+            @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
+            fun `Given running and successfully terminated pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    add(runningPodSnapshot), // 0ms
+                    // 50ms running timeout
+                    noop(), // 100ms
+                    add(succeededPodSnapshot) // 200ms
+                ))
+
+                // execute
+
+                val result = execute(millis(50), millis(10000))
+
+
+                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+            }
+
+            @Test
+            @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
+            fun `Given running waiting and successfully terminated pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    add(runningPodSnapshot), // 0ms
+                    // running timeout
+                    add(waitingPodSnapshot), // 100ms
+                    // terminated timeout
+                    add(succeededPodSnapshot) // 200ms
+                ))
+
+                // execute
+                val ex = assertThrows<PodNotTerminatedTimeoutException> {
+                    execute(millis(50), millis(140))
+                }
+
+
+                assertEquals(snapshot(pod = waitingPodSnapshot), ex.currentState)
+                assertEquals(millis(140), ex.timeout)
+            }
+
+            // TODO: running wiating terminated
+
+            @Test
             fun `Given delayed successfully terminated pod event Then the terminated snapshot`() {
                 podEvents.addAll(listOf(
                     add(intermediateRunningPodSnapshot), // 0ms
