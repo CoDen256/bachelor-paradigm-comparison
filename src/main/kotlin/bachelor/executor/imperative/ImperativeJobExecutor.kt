@@ -25,22 +25,22 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             job = api.create(request.jobSpec)
 
 
-            waitUntilDone(checkPodCondition(request.isRunningTimeout, "running", cachedPodEvents, )
+            waitUntilDone(request.isRunningTimeout, checkPodCondition(request.isRunningTimeout, "running${request.jobSpec}", cachedPodEvents, )
             {list -> list.any { it.mainContainerState is RunningState || it.mainContainerState is TerminatedState }
             })
-            val future = checkPodCondition(
-                request.isTerminatedTimeout,
-                "termin",
-                cachedPodEvents
-            ) { list -> list.any { it.mainContainerState is TerminatedState } }
+
 
             val (podSnapshot: PodSnapshot?, currentState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
 
             if (podSnapshot is ActivePodSnapshot && (podSnapshot.mainContainerState is RunningState)){
                 println("OOPSIE $podSnapshot")
-
-                val done = waitUntilDone(future)
+                val future = checkPodCondition(
+                    request.isTerminatedTimeout - request.isRunningTimeout,
+                    "termin ${request.jobSpec}",
+                    cachedPodEvents
+                ) { list -> list.any { it.mainContainerState is TerminatedState } }
+                val done = waitUntilDone(request.isTerminatedTimeout - request.isRunningTimeout, future)
                 val (newPodSnapshot: PodSnapshot?, newState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
                 if (newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState !is TerminatedState) {
@@ -105,9 +105,9 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
     }
 
 
-    private fun <T> waitUntilDone(future: Future<T>): T? {
+    private fun <T> waitUntilDone(timeout: Duration, future: Future<T>): T? {
         return try {
-            future.get()
+            future.get(timeout.toMillis(), TimeUnit.MILLISECONDS)
         } catch (e: TimeoutException) {
             future.cancel(true)
             null
@@ -139,8 +139,9 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             }
             events.map { it.element }
         }
-        return future
-            .orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS) // why not cancelling
+        return future.orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS)
+
+    // why not cancelling
     }
 
 
