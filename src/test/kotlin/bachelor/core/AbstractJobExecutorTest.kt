@@ -2,10 +2,7 @@ package bachelor.core
 
 import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
-import bachelor.core.executor.JobExecutionRequest
-import bachelor.core.executor.JobExecutor
-import bachelor.core.executor.PodNotRunningTimeoutException
-import bachelor.core.executor.PodNotTerminatedTimeoutException
+import bachelor.core.executor.*
 import bachelor.core.utils.generate.*
 import bachelor.millis
 import org.junit.jupiter.api.*
@@ -901,8 +898,8 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Nested
-        @DisplayName("Given delayed running pod events and no logs and no job events When executed Then throw PodNotTerminatedException")
-        inner class GivenDelayedRunningPodEventsButNoJobEventsAndNoLogs {
+        @DisplayName("Given LateTerminatedAndDelayedRunning pod events and no logs and no job events When executed Then throw PodNotTerminatedException")
+        inner class GivenLateTerminatedAndDelayedRunningPodEventsButNoJobEventsAndNoLogs {
 
             private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
@@ -953,6 +950,59 @@ abstract class AbstractJobExecutorTest(
                 assertEquals(millis(170), ex.timeout)
             }
         }
+        @Nested
+        @DisplayName("Given delayed running pod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
+        inner class GivenFailedTerminatedPodEventsButNoJobEventsAndNoLogs {
+
+            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
+            private val waitingPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
+            private val intermediateRunningPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.PENDING)
+            private val runningPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
+            private val terminatedPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(1), Phase.RUNNING)
+
+            private val randomPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
+
+            private val podRef = runningPodSnapshot.reference()
+
+
+            @BeforeEach
+            fun setup() {
+                podEvents.clear()
+                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
+                    podEvents.forEach {
+                        handler.onEvent(it)
+                    }
+                }
+            }
+            @AfterEach
+            fun teardown(){
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given failed terminated pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    add(waitingPodSnapshot),
+                    add(runningPodSnapshot),
+                    add(terminatedPodSnapshot)
+                ))
+
+                // execute
+                val ex = assertThrows<PodTerminatedWithErrorException> {
+                    execute(millis(50), millis(100))
+                }
+
+                assertEquals(snapshot(pod = terminatedPodSnapshot), ex.currentState)
+                assertEquals(1, ex.exitCode)
+            }
+        }
+
     }
 
     private fun emitDelayed(

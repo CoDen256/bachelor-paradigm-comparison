@@ -35,6 +35,10 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
                 podSnapshot ?: InitialPodSnapshot
             )
 
+            if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is TerminatedState){
+                throw PodTerminatedWithErrorException(currentState, podSnapshot.mainContainerState.exitCode)
+            }
+
             if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is RunningState){
                 throw PodNotTerminatedTimeoutException(currentState, request.isTerminatedTimeout)
             }
