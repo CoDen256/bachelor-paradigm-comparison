@@ -34,7 +34,7 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
 
             if (podSnapshot is ActivePodSnapshot && (podSnapshot.mainContainerState is RunningState)){
                 println("OOPSIE $podSnapshot")
-                val done = waitUntilDone(request.isTerminatedTimeout,
+                val done = waitUntilDone(request.isTerminatedTimeout - request.isRunningTimeout,
                     checkPodCondition(request.isTerminatedTimeout,"termin", cachedPodEvents) {list -> list.any { it.mainContainerState is TerminatedState } })
                 val (newPodSnapshot: PodSnapshot?, newState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
@@ -137,6 +137,8 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             events.map { it.element }
         }
         return future
+
+//            .orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS)
     }
 
 

@@ -946,11 +946,11 @@ abstract class AbstractJobExecutorTest(
 
                 // execute
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
-                    execute(millis(150), millis(170))
+                    execute(millis(150), millis(150))
                 }
 
                 assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
-                assertEquals(millis(170), ex.timeout)
+                assertEquals(millis(150), ex.timeout)
             }
 
             @Test
