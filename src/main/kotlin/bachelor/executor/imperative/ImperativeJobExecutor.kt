@@ -26,20 +26,20 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             job = api.create(request.jobSpec)
 
 
-            waitUntilDone(request.isRunningTimeout, checkPodCondition(cachedPodEvents)
+            waitUntilDone(request.isRunningTimeout, checkPodCondition("running", cachedPodEvents)
             {list -> list.any { it.mainContainerState is RunningState || it.mainContainerState is TerminatedState }
             })
 
             val (podSnapshot: PodSnapshot?, currentState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
 
-            if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is RunningState){
-                println("OOPSIE")
+            if (podSnapshot is ActivePodSnapshot && (podSnapshot.mainContainerState is RunningState)){
+                println("OOPSIE $podSnapshot")
                 val done = waitUntilDone(request.isTerminatedTimeout.minus(request.isRunningTimeout),
-                    checkPodCondition(cachedPodEvents) {list -> list.any { it.mainContainerState is TerminatedState } })
+                    checkPodCondition("termin", cachedPodEvents) {list -> list.any { it.mainContainerState is TerminatedState } })
                 val (newPodSnapshot: PodSnapshot?, newState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
-                if (newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState is RunningState) {
+                if (newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState !is TerminatedState) {
                     throw PodNotTerminatedTimeoutException(populateWithLogs(newState), request.isTerminatedTimeout)
                 }
                 if (isTerminated(newPodSnapshot)) {
@@ -180,12 +180,12 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
 
 
 
-    private fun checkPodCondition(events: Collection<ResourceEvent<ActivePodSnapshot>>, condition: Predicate<List<ActivePodSnapshot>>): Future<List<ActivePodSnapshot?>> {
+    private fun checkPodCondition(name: String, events: Collection<ResourceEvent<ActivePodSnapshot>>, condition: Predicate<List<ActivePodSnapshot>>): Future<List<ActivePodSnapshot?>> {
         val future = CompletableFuture<List<ActivePodSnapshot?>>()
         future.completeAsync {
             var i = 0
             while (!condition.test(events.mapNotNull { it.element }) && !future.isCancelled) {
-                println("Sleeping: ${i++}, ${events.mapNotNull { it.element }}")
+                println("Sleeping: $name ${i++}, ${events.mapNotNull { it.element }}")
                 Thread.sleep(10)
             }
             if (future.isCancelled){

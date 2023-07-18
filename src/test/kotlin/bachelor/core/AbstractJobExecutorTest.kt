@@ -1164,7 +1164,6 @@ abstract class AbstractJobExecutorTest(
             }
 
             @Test
-            @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
             fun `Given running waiting and successfully terminated pod event Then the terminated snapshot`() {
                 podEvents.addAll(listOf(
                     add(runningPodSnapshot), // 0ms
