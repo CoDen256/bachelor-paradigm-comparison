@@ -125,12 +125,14 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
         val future = CompletableFuture<List<ActivePodSnapshot?>>()
         future.completeAsync {
             var i = 0
-            while (!condition.test(events.mapNotNull { it.element }) && !future.isCancelled) {
+            while (!condition.test(events.mapNotNull { it.element }) && !future.isCancelled && !future.isCompletedExceptionally) {
                 println("Sleeping: $name ${i++}, ${events.mapNotNull { it.element }}")
                 Thread.sleep(10)
             }
             if (future.isCancelled){
                 println("Cancelled!!")
+            }else if (future.isCompletedExceptionally) {
+                println("EXCEPTIONALLY")
             }else{
                 println("FINISHED ${events.map { it.element }}")
             }
