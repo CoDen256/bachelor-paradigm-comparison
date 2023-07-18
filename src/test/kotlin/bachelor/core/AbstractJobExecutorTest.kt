@@ -19,6 +19,7 @@ import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
 import java.time.Duration
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
@@ -819,17 +820,18 @@ abstract class AbstractJobExecutorTest(
                     add(intermediatePodSnapshot), // 0ms
                     add(intermediatePodSnapshot), // 100ms
                     add(waitingSnapshot), // 200ms
-                    // 220ms running timeout
+                    // 250ms running timeout
+                    // 300ms terminated timeout
                     add(runningPodSnapshot), // 300ms
                 ))
 
                 // execute
                 val ex = assertThrows<PodNotRunningTimeoutException> {
-                    execute(millis(220), millis(250))
+                    execute(millis(250), millis(300))
                 }
 
                 assertEquals(snapshot(pod = waitingSnapshot), ex.currentState)
-                assertEquals(millis(220), ex.timeout)
+                assertEquals(millis(250), ex.timeout)
             }
         }
         @Nested
@@ -949,6 +951,24 @@ abstract class AbstractJobExecutorTest(
                 assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
                 assertEquals(millis(170), ex.timeout)
             }
+
+            @Test
+            fun `Given delayed waiting and late terminated pod event Then the running snapshot`() {
+                podEvents.addAll(listOf(
+                    add(waitingPodSnapshot), // 0ms
+                    // 50ms running timeout
+                    // 70ms terminated timeout
+                    add(terminatedPodSnapshot) // 100ms
+                ))
+
+                // execute
+                val ex = assertThrows<PodNotRunningTimeoutException> {
+                    execute(millis(50), millis(70))
+                }
+
+                assertEquals(snapshot(pod = waitingPodSnapshot), ex.currentState)
+                assertEquals(millis(50), ex.timeout)
+            }
         }
         @Nested
         @DisplayName("Given FailedTerminatedPod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
@@ -1020,6 +1040,59 @@ abstract class AbstractJobExecutorTest(
         }
 
         @Nested
+        @DisplayName("Given FailedTerminatedPod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
+        inner class GivenDelayedTerminatedPodEventsButNoJobEventsAndNoLogs {
+
+            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
+
+            private val waitingPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
+            private val intermediateRunningPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.PENDING)
+            private val runningPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
+            private val terminatedPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(1), Phase.RUNNING)
+
+
+            private val randomPodSnapshot =
+                ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
+
+            private val podRef = runningPodSnapshot.reference()
+
+
+            @BeforeEach
+            fun setup() {
+                podEvents.clear()
+                whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
+                    emitDelayed(podEvents, handler, 100)
+                }
+            }
+            @AfterEach
+            fun teardown(){
+                verify(api).getLogs(podRef)
+            }
+
+            @Test
+            fun `Given failed terminated pod event delayed Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    add(runningPodSnapshot), // 0ms
+                    // 50ms running timeout
+                    add(terminatedPodSnapshot) // 100ms
+                    // 200ms terminated timeout
+                ))
+
+                // execute
+                val ex = assertThrows<PodTerminatedWithErrorException> {
+                    execute(millis(50), millis(200))
+                }
+
+                assertEquals(snapshot(pod = terminatedPodSnapshot), ex.currentState)
+                assertEquals(1, ex.exitCode)
+            }
+        }
+
+        @Nested
         @DisplayName("Given delayed running pod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
         inner class GivenSuccessfullyTerminatedPodEventsButNoJobEventsAndNoLogs {
 
@@ -1043,13 +1116,13 @@ abstract class AbstractJobExecutorTest(
             private val podRef = runningPodSnapshot.reference()
 
 
+            private val interval = 100L
+
             @BeforeEach
             fun setup() {
                 podEvents.clear()
                 whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
-                    podEvents.forEach {
-                        handler.onEvent(it)
-                    }
+                    emitDelayed(podEvents, handler, interval)
                 }
             }
             @AfterEach
@@ -1058,17 +1131,35 @@ abstract class AbstractJobExecutorTest(
             }
 
             @Test
-            fun `Given failed terminated pod event Then the terminated snapshot`() {
+            @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
+            fun `Given successfully terminated pod event Then the terminated snapshot`() {
                 podEvents.addAll(listOf(
-                    add(succeededPodSnapshot)
+                    add(succeededPodSnapshot) // 0ms
                 ))
 
                 // execute
 
-                val result = execute(millis(50), millis(100))
+                val result = execute(millis(5000), millis(10000))
 
 
                 assertEquals(snapshot(pod = succeededPodSnapshot), result)
+            }
+
+            @Test
+            fun `Given delayed successfully terminated pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    add(intermediateRunningPodSnapshot), // 0ms
+                    add(succeededPodSnapshot) // 100ms
+                ))
+
+                // execute
+
+                val ex = assertThrows<PodNotTerminatedTimeoutException> {
+                    execute(millis(50), millis(90))
+                }
+
+                assertEquals(snapshot(pod = intermediateRunningPodSnapshot), ex.currentState)
+                assertEquals(millis(90), ex.timeout)
             }
         }
 

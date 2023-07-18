@@ -8,6 +8,8 @@ import java.util.concurrent.*
 import java.util.function.Predicate
 
 class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
+    private val executorService = Executors.newSingleThreadExecutor()
+
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
         val cachedJobEvents = ConcurrentLinkedQueue<ResourceEvent<ActiveJobSnapshot>>() // should it be here?
         val cachedPodEvents = ConcurrentLinkedQueue<ResourceEvent<ActivePodSnapshot>>()
@@ -22,36 +24,79 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
             job = api.create(request.jobSpec)
-            Thread.sleep(request.isRunningTimeout.toMillis())
 
-            val jobSnapshot: JobSnapshot? = cachedJobEvents.findLast{ it.element?.uid == job.uid }?.element
-            val podSnapshot: PodSnapshot? = cachedPodEvents.findLast { it.element?.controllerUid == job.uid }?.element
-            val logs = (podSnapshot as? ActivePodSnapshot)?.let { try {
-                api.getLogs(it.reference())
-            } catch (e: Exception) {null}}
-            val currentState = ExecutionSnapshot(
-                Logs(logs),
-                jobSnapshot ?: InitialJobSnapshot,
-                podSnapshot ?: InitialPodSnapshot
-            )
 
-            if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is TerminatedState){
-                if (podSnapshot.mainContainerState.exitCode == 0){
-                    return currentState
-                }
-                throw PodTerminatedWithErrorException(currentState, podSnapshot.mainContainerState.exitCode)
-            }
+            waitUntilDone(request.isRunningTimeout, checkPodCondition(cachedPodEvents)
+            {list -> list.any { it.mainContainerState is RunningState || it.mainContainerState is TerminatedState }
+            })
+
+            val (podSnapshot: PodSnapshot?, currentState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
+
 
             if (podSnapshot is ActivePodSnapshot && podSnapshot.mainContainerState is RunningState){
-                throw PodNotTerminatedTimeoutException(currentState, request.isTerminatedTimeout)
-            }
+                Thread.sleep(request.isTerminatedTimeout.toMillis() - request.isRunningTimeout.toMillis() )
+                val (newPodSnapshot: PodSnapshot?, newState) = lastEvent(cachedJobEvents, job, cachedPodEvents)
 
-            throw PodNotRunningTimeoutException(currentState, request.isRunningTimeout)
+                if (newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState is RunningState) {
+                    throw PodNotTerminatedTimeoutException(populateWithLogs(newState), request.isTerminatedTimeout)
+                }
+                if (isTerminated(newPodSnapshot)) {
+                    return verifyExitCode((newPodSnapshot as ActivePodSnapshot).mainContainerState as TerminatedState, newState)
+                }
+            } else if (isTerminated(podSnapshot)){
+                return verifyExitCode((podSnapshot as ActivePodSnapshot).mainContainerState as TerminatedState, currentState)
+            }
+            throw PodNotRunningTimeoutException(populateWithLogs(currentState), request.isRunningTimeout)
         }finally {
             job?.let { api.delete(it) }
             api.removeJobEventHandler(jobListener)
             api.removePodEventHandler(podListener)
+            executorService.shutdown()
         }
+    }
+
+    private fun isTerminated(newPodSnapshot: PodSnapshot?) =
+        newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState is TerminatedState
+
+    private fun verifyExitCode(
+        mainContainerState: TerminatedState,
+        currentState: ExecutionSnapshot
+    ): ExecutionSnapshot {
+        return if (mainContainerState.exitCode == 0) {
+            populateWithLogs(currentState)
+        } else {
+            throw PodTerminatedWithErrorException(populateWithLogs(currentState), mainContainerState.exitCode)
+        }
+    }
+
+    private fun lastEvent(
+        cachedJobEvents: ConcurrentLinkedQueue<ResourceEvent<ActiveJobSnapshot>>,
+        job: JobReference,
+        cachedPodEvents: ConcurrentLinkedQueue<ResourceEvent<ActivePodSnapshot>>
+    ): Pair<PodSnapshot?, ExecutionSnapshot> {
+        val jobSnapshot: JobSnapshot? = cachedJobEvents.findLast { it.element?.uid == job.uid }?.element
+        val podSnapshot: PodSnapshot? = cachedPodEvents.findLast { it.element?.controllerUid == job.uid }?.element
+        val currentState = ExecutionSnapshot(
+            Logs.empty(),
+            jobSnapshot ?: InitialJobSnapshot,
+            podSnapshot ?: InitialPodSnapshot
+        )
+        return Pair(podSnapshot, currentState)
+    }
+
+    private fun populateWithLogs(s: ExecutionSnapshot): ExecutionSnapshot {
+        return ExecutionSnapshot(Logs(getLogs(s.podSnapshot)), s.jobSnapshot, s.podSnapshot)
+    }
+
+    private fun getLogs(podSnapshot: PodSnapshot?): String? {
+        val logs = (podSnapshot as? ActivePodSnapshot)?.let {
+            try {
+                api.getLogs(it.reference())
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return logs
     }
 
     private fun execute0(request: JobExecutionRequest): ExecutionSnapshot {
@@ -70,10 +115,10 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
             job = api.create(request.jobSpec)
 
 
-            waitUntilPodRunningOrTerminated(request.isRunningTimeout)
-            val pod = waitUntilPodTerminated(request.isTerminatedTimeout)
+//            waitUntilPodRunningOrTerminated(request.isRunningTimeout)
+//            val pod = waitUntilPodTerminated(request.isTerminatedTimeout)
 
-            verifyTermination(pod.mainContainerState as TerminatedState) // force cast because it was already checked
+//            verifyTermination(pod.mainContainerState as TerminatedState) // force cast because it was already checked
 
             return lastExecutionSnapshot(jobEvents, podEvents)
         } catch (e: ExceptionHolder) {
@@ -101,15 +146,15 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
         )
     }
 
-    private fun waitUntilPodRunningOrTerminated(runningTimeout: Duration): ActivePodSnapshot {
-        return waitUntilDone(runningTimeout, checkPodCondition { isPodRunningOrTerminated(it) })
-            ?: throw ExceptionHolder{PodNotRunningTimeoutException(it, runningTimeout)}
-    }
-
-    private fun waitUntilPodTerminated(terminatedTimeout: Duration): ActivePodSnapshot {
-        return waitUntilDone(terminatedTimeout, checkPodCondition { isPodTerminated(it) })
-            ?: throw ExceptionHolder{PodNotTerminatedTimeoutException(it, terminatedTimeout)}
-    }
+//    private fun waitUntilPodRunningOrTerminated(runningTimeout: Duration): ActivePodSnapshot {
+//        return waitUntilDone(runningTimeout, checkPodCondition { isPodRunningOrTerminated(it) })
+//            ?: throw ExceptionHolder{PodNotRunningTimeoutException(it, runningTimeout)}
+//    }
+//
+//    private fun waitUntilPodTerminated(terminatedTimeout: Duration): ActivePodSnapshot {
+//        return waitUntilDone(terminatedTimeout, checkPodCondition { isPodTerminated(it) })
+//            ?: throw ExceptionHolder{PodNotTerminatedTimeoutException(it, terminatedTimeout)}
+//    }
 
 
     private fun <T> waitUntilDone(duration: Duration, future: Future<T>): T? {
@@ -120,31 +165,33 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
                 future.get(duration.toNanos(), TimeUnit.NANOSECONDS)
             }
         } catch (e: TimeoutException) {
+            future.cancel(true)
             null
         } catch (e: ExecutionException) {
+            future.cancel(true)
             throw e
         } catch (e: Exception) {
+            future.cancel(true)
             throw e
         }
     }
 
-    private fun checkPodCondition(condition: Predicate<ActivePodSnapshot>): CompletableFuture<ActivePodSnapshot>{
-        val future = CompletableFuture<ActivePodSnapshot>()
 
-        val listener = ResourceEventHandler<ActivePodSnapshot>{
-            try {
-                if (it.element != null && condition.test(it.element)) {
-                    future.complete(it.element)
-                }
-            } catch (e: Exception) {
-                future.completeExceptionally(e)
+
+    private fun checkPodCondition(events: Collection<ResourceEvent<ActivePodSnapshot>>, condition: Predicate<List<ActivePodSnapshot>>): Future<List<ActivePodSnapshot?>> {
+        val future = CompletableFuture<List<ActivePodSnapshot?>>()
+        future.completeAsync {
+            var i = 0
+            while (!condition.test(events.mapNotNull { it.element }) && !future.isCancelled) {
+                println("Sleeping: ${i++}, ${events.mapNotNull { it.element }}")
+                Thread.sleep(10)
             }
+            if (future.isCancelled){
+                println("Cancelled!!")
+            }
+            events.map { it.element }
         }
-        api.addPodEventHandler(listener)
-
-        return future.whenComplete { _, t ->
-            api.removePodEventHandler(listener)
-        }
+        return future
     }
 
 
