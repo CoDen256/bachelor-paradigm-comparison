@@ -935,6 +935,7 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given delayed running and late terminated pod event Then the running snapshot`() {
+                Thread.sleep(10000)
                 podEvents.addAll(listOf(
                     add(waitingPodSnapshot), // 0ms
                     add(runningPodSnapshot), // 100ms
@@ -1183,12 +1184,53 @@ abstract class AbstractJobExecutorTest(
                 assertEquals(millis(140), ex.timeout)
             }
 
-            // TODO: running wiating terminated
+
+            @Test
+            fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
+                    add(runningPodSnapshot), // 0ms
+                    add(succeededPodSnapshot) // 100ms
+                    // 200ms running timeout
+                    // 200ms terminated timeout
+                ))
+
+                // execute
+                val result = execute(millis(200), millis(200))
+
+
+                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+            }
+
+//            @Test
+//            fun `Given running direct and successfully terminated after 300ms pod event Then the terminated snapshot`() {
+//                podEvents.addAll(listOf(
+//                    // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
+//                    add(runningPodSnapshot), // 0ms
+//                    noop(), // 100ms
+//                    // 100ms running timeout
+//                    // 100ms terminated timeout
+//                    noop(), // 200ms
+//                    add(succeededPodSnapshot) // 300ms
+//                ))
+//
+//                // execute
+//                val ex = assertThrows<PodNotTerminatedTimeoutException> {
+//                    execute(millis(100), millis(100))
+//                }
+//
+//
+//                assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
+//                assertEquals(millis(100), ex.timeout)
+//            }
+
 
             @Test
             fun `Given delayed successfully terminated pod event Then the terminated snapshot`() {
                 podEvents.addAll(listOf(
                     add(intermediateRunningPodSnapshot), // 0ms
+                    // 50ms running timeout
+                    // 90ms terminated timeout
                     add(succeededPodSnapshot) // 100ms
                 ))
 
