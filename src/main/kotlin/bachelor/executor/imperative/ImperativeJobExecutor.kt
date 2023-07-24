@@ -28,13 +28,13 @@ class ImperativeJobExecutor(private val api: JobApi): JobExecutor {
 
             val checkRunningCondition = checkPodCondition(
                 request.isRunningTimeout,
-                "IS RUNNING ${request.jobSpec}",
+                "IS RUNNING",
                 cachedPodEvents
             ) { list -> list.any { it.mainContainerState is RunningState || it.mainContainerState is TerminatedState } }
 
             val checkTerminatedCondition = checkPodCondition(
                 request.isTerminatedTimeout,
-                "IS TERMINATED ${request.jobSpec}",
+                "IS TERMINATED",
                 cachedPodEvents
             ) { list -> list.any { it.mainContainerState is TerminatedState } }
 

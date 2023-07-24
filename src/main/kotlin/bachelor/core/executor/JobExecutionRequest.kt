@@ -21,8 +21,9 @@ data class JobExecutionRequest(
 
     init {
         require(jobSpec.isEmpty().not()) {"Job spec MUST NOT be empty" }
-        require(!isRunningTimeout.isNegative) {"Running Timeout MUST BE non-negative" }
-        require(!isTerminatedTimeout.isNegative) {"Terminated Timeout MUST BE non-negative" }
+        require(!isRunningTimeout.isNegative) {"Running Timeout MUST BE non-negative, but was $isRunningTimeout" }
+        require(!isTerminatedTimeout.isNegative) {"Terminated Timeout MUST BE non-negative, but was $isTerminatedTimeout" }
+        require(isTerminatedTimeout >= isRunningTimeout ) {"Terminated Timeout MUST BE larger than the running timeout, but was , but was (T)$isTerminatedTimeout < (R)$isRunningTimeout" }
     }
     override fun toString(): String {
         return "$isRunningTimeout|$isTerminatedTimeout|Spec: ${jobSpec.length} bytes"

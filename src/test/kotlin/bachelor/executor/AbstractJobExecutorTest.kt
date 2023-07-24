@@ -1,4 +1,4 @@
-package bachelor.core
+package bachelor.executor
 
 import bachelor.core.api.*
 import bachelor.core.api.snapshot.*

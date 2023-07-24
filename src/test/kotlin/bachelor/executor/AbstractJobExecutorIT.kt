@@ -1,6 +1,9 @@
-package bachelor.core
+package bachelor.executor
 
 import bachelor.awaitNoPodsPresent
+import bachelor.core.ImageRunRequest
+import bachelor.core.KubernetesBasedImageRunner
+import bachelor.core.NAMESPACE
 import bachelor.core.api.JobApi
 import bachelor.core.api.snapshot.*
 import bachelor.core.api.snapshot.Phase.PENDING
@@ -24,7 +27,6 @@ import bachelor.getJobs
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import reactor.core.publisher.Mono
@@ -33,7 +35,7 @@ import java.time.Duration
 import kotlin.test.assertEquals
 
 
-abstract class AbstractJobExecutionIT (
+abstract class AbstractJobExecutorIT (
     val createExecutor: (JobApi) -> JobExecutor
 ){
 
@@ -41,7 +43,7 @@ abstract class AbstractJobExecutionIT (
     private val JOB_NAME = TARGET_JOB
 
     private val helper = KubernetesClientBuilder().build().apply {
-        createNamespace(this@AbstractJobExecutionIT.namespace)
+        createNamespace(this@AbstractJobExecutorIT.namespace)
     }
     private val resolver = BaseJobTemplateFiller()
     private val jobSpecFile = "/template/executor-test-job.yaml"
@@ -198,7 +200,7 @@ abstract class AbstractJobExecutionIT (
 
         val result = assertThrows<PodNotTerminatedTimeoutException> {
             runner.run(
-                10, 0,
+                0, 0,
                 0, 0,
             )
         }.currentState

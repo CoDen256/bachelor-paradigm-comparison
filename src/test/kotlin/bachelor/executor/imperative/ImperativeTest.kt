@@ -1,4 +1,4 @@
-package bachelor.core
+package bachelor.executor.imperative
 
 import bachelor.core.api.Action
 import bachelor.core.api.JobApi
@@ -9,7 +9,6 @@ import bachelor.core.executor.JobExecutionRequest
 import bachelor.core.executor.JobExecutor
 import bachelor.core.executor.PodNotTerminatedTimeoutException
 import bachelor.core.utils.generate.*
-import bachelor.executor.imperative.ImperativeJobExecutor
 import bachelor.millis
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -25,7 +24,6 @@ import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
 import reactor.core.publisher.Flux
 import java.time.Duration
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 @ExtendWith(MockitoExtension::class)
