@@ -17,6 +17,7 @@ import org.mockito.kotlin.capture
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
+import reactor.core.publisher.Flux
 import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -1268,13 +1269,13 @@ abstract class AbstractJobExecutorTest(
         handler: ResourceEventHandler<ActivePodSnapshot>,
         interval: Long
     ) {
-        Executors.newSingleThreadExecutor().submit {
-            resourceEvents.forEach {
+        Flux.interval(Duration.ZERO, Duration.ofMillis(interval))
+            .take(resourceEvents.size.toLong())
+            .map { resourceEvents[it.toInt()] }
+            .subscribe {
+                println("\n----------------[EMITTED] $it, ${System.currentTimeMillis().toString().substring(9, 13)}  [EMITTED] ------------")
                 handler.onEvent(it)
-                println("Emitted $it, ${System.currentTimeMillis()}")
-                Thread.sleep(interval)
             }
-        }
     }
 
     private fun execute(
