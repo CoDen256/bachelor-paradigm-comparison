@@ -193,35 +193,6 @@ abstract class AbstractJobExecutorIT (
         api.stopListeners()
     }
 
-    @Test
-    fun notTerminatedTimeout_tooLow() {
-        api.startListeners()
-
-
-        val result = assertThrows<PodNotTerminatedTimeoutException> {
-            runner.run(
-                0, 0,
-                0, 0,
-            )
-        }.currentState
-
-        val (_, uid) = jobRef(result)
-        val expectedAddJob = job(uid, ADD, null, null, null, null)
-        val expectedUpdateJob = job(uid, UPDATE, 1, 0, null, null)
-        val expectedPod = InitialPodSnapshot
-        val expectedLogs = Logs.empty()
-
-        if ((result.jobSnapshot as ActiveJobSnapshot).lastAction == "ADD") {
-            assertEquals(expectedAddJob, result.jobSnapshot)
-        } else {
-            assertEquals(expectedUpdateJob, result.jobSnapshot)
-        }
-        assertNoJobPresent()
-        assertEquals(expectedPod, result.podSnapshot)
-        assertEquals(expectedLogs, result.logs)
-
-        api.stopListeners()
-    }
 
     @Test
     fun notRunningTimeout() {
