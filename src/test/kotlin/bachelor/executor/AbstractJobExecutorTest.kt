@@ -4,6 +4,7 @@ import bachelor.core.api.*
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import bachelor.core.utils.generate.*
+import bachelor.emitter
 import bachelor.millis
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -19,7 +20,6 @@ import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
 import reactor.core.publisher.Flux
 import java.time.Duration
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
@@ -1097,7 +1097,6 @@ abstract class AbstractJobExecutorTest(
         @DisplayName("Given delayed running pod events and no logs and no job events When executed Then throw PodTerminatedWithErrorException")
         inner class GivenSuccessfullyTerminatedPodEventsButNoJobEventsAndNoLogs {
 
-            private val podEvents = ArrayList<ResourceEvent<ActivePodSnapshot>>()
 
             private val waitingPodSnapshot =
                 ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
@@ -1117,13 +1116,13 @@ abstract class AbstractJobExecutorTest(
             private val podRef = runningPodSnapshot.reference()
 
 
-            private val interval = 100L
+            private var events: Flux<ResourceEvent<ActivePodSnapshot>>? = null
 
             @BeforeEach
             fun setup() {
-                podEvents.clear()
+                events = null
                 whenever(api.addPodEventHandler(any())).thenWithPodHandler { handler ->
-                    emitDelayed(podEvents, handler, interval)
+                    events?.emitAndTrigger(handler)
                 }
             }
             @AfterEach
@@ -1134,9 +1133,9 @@ abstract class AbstractJobExecutorTest(
             @Test
             @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
             fun `Given successfully terminated pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
-                    add(succeededPodSnapshot) // 0ms
-                ))
+                events = emitter  {
+                    emit(add(succeededPodSnapshot)) // 0ms
+                }
 
                 // execute
 
@@ -1149,12 +1148,11 @@ abstract class AbstractJobExecutorTest(
             @Test
             @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
             fun `Given running and successfully terminated pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
-                    add(runningPodSnapshot), // 0ms
+                events = emitter {
+                    emit(add(runningPodSnapshot)) // 0ms
                     // 50ms running timeout
-                    noop(), // 100ms
-                    add(succeededPodSnapshot) // 200ms
-                ))
+                    emit(millis(200), add(succeededPodSnapshot)) // 200ms
+                }
 
                 // execute
 
@@ -1166,13 +1164,13 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given running waiting and successfully terminated pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
-                    add(runningPodSnapshot), // 0ms
-                    // running timeout
-                    add(waitingPodSnapshot), // 100ms
-                    // terminated timeout
-                    add(succeededPodSnapshot) // 200ms
-                ))
+                events = emitter {
+                    emit(add(runningPodSnapshot)) // 0ms
+                    // 50ms running timeout
+                    emit(millis(100), add(waitingPodSnapshot)) // 100ms
+                    // 140ms terminated timeout
+                    emit(millis(200), add(succeededPodSnapshot)) // 200ms
+                }
 
                 // execute
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
@@ -1187,13 +1185,13 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given running directly running and successfully terminated in 200ms pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
+                events = emitter {
                     // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
-                    add(runningPodSnapshot), // 0ms
-                    add(succeededPodSnapshot) // 100ms
+                    emit(add(runningPodSnapshot)) // 0ms
+                    emit(millis(100), add(succeededPodSnapshot)) // 100ms
                     // 200ms running timeout
                     // 200ms terminated timeout
-                ))
+                }
 
                 // execute
                 val result = execute(millis(200), millis(200))
@@ -1204,12 +1202,11 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
-                    noop(), // 0ms
-                    add(succeededPodSnapshot) // 100ms
+                events = emitter {
+                    emit(millis(100), add(succeededPodSnapshot) )// 100ms
                     // 200ms running timeout
                     // 200ms terminated timeout
-                ))
+                }
 
                 // execute
                 val result = execute(millis(200), millis(200))
@@ -1220,15 +1217,14 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given running direct and successfully terminated after 300ms pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
+
+                events = emitter {
                     // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
-                    add(runningPodSnapshot), // 0ms
-                    noop(), // 100ms
+                    emit(add(runningPodSnapshot)) // 0ms
                     // 100ms running timeout
                     // 100ms terminated timeout
-                    noop(), // 200ms
-                    add(succeededPodSnapshot) // 300ms
-                ))
+                    emit(millis(300), add(succeededPodSnapshot)) // 300ms
+                }
 
                 // execute
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
@@ -1243,13 +1239,12 @@ abstract class AbstractJobExecutorTest(
 
             @Test
             fun `Given delayed successfully terminated pod event Then the terminated snapshot`() {
-                podEvents.addAll(listOf(
-                    add(intermediateRunningPodSnapshot), // 0ms
+                events = emitter {
+                    emit(add(intermediateRunningPodSnapshot)) // 0ms
                     // 50ms running timeout
                     // 90ms terminated timeout
-                    noop(), //100ms // if no noop, the last event can get the snapshot that isn't available
-                    add(succeededPodSnapshot) // 100ms
-                ))
+                    emit(millis(200), add(succeededPodSnapshot) )// 200ms
+                }
 
                 // execute
 
@@ -1263,7 +1258,14 @@ abstract class AbstractJobExecutorTest(
         }
 
     }
-
+    private fun Flux<ResourceEvent<ActivePodSnapshot>>.emitAndTrigger(
+        handler: ResourceEventHandler<ActivePodSnapshot>,
+    ) {
+        subscribe {
+            println("\n----------------[EMITTED] $it, ${System.currentTimeMillis().toString().substring(9, 13)}  [EMITTED] ------------")
+            handler.onEvent(it)
+        }
+    }
     private fun emitDelayed(
         resourceEvents: List<ResourceEvent<ActivePodSnapshot>>,
         handler: ResourceEventHandler<ActivePodSnapshot>,

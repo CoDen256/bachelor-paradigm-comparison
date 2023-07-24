@@ -25,8 +25,9 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
         try {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
+            println("---------------------[HANDLER ADDED ${time()}]------------------------------")
             job = api.create(request.jobSpec)
-
+            println("---------------------[CREATED JOB ${time()}]------------------------------")
 
             val checkRunningCondition = checkPodCondition(
                 request.isRunningTimeout,
