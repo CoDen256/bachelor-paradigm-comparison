@@ -194,18 +194,18 @@ class ImperativeTest {
             add(intermediateRunningPodSnapshot), // 0ms
             // 50ms running timeout
             // 90ms terminated timeout
-            add(succeededPodSnapshot) // 100ms
+            noop(), //100ms // if no noop, the last event can get the snapshot that isn't available
+            add(succeededPodSnapshot) // 200ms
         ))
-        execute(millis(1150), millis(1190))
 
-        Thread.sleep(5000)
-//        // execute
-//
-//        val ex = assertThrows<PodNotTerminatedTimeoutException> {
-//        }
-//
-//        assertEquals(snapshot(pod = intermediateRunningPodSnapshot), ex.currentState)
-//        assertEquals(millis(90), ex.timeout)
+        // execute
+
+        val ex = assertThrows<PodNotTerminatedTimeoutException> {
+            execute(millis(50), millis(90))
+        }
+
+        assertEquals(snapshot(pod = intermediateRunningPodSnapshot), ex.currentState)
+        assertEquals(millis(90), ex.timeout)
     }
 
     private fun emitDelayed(

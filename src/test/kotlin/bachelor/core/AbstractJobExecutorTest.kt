@@ -1230,6 +1230,7 @@ abstract class AbstractJobExecutorTest(
                     add(intermediateRunningPodSnapshot), // 0ms
                     // 50ms running timeout
                     // 90ms terminated timeout
+                    noop(), //100ms // if no noop, the last event can get the snapshot that isn't available
                     add(succeededPodSnapshot) // 100ms
                 ))
 
