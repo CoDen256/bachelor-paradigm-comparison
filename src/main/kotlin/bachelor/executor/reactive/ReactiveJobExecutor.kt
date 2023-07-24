@@ -1,9 +1,9 @@
 package bachelor.executor.reactive
 
-import bachelor.core.api.*
-import bachelor.core.executor.PodNotRunningTimeoutException
-import bachelor.core.executor.PodNotTerminatedTimeoutException
-import bachelor.core.executor.PodTerminatedWithErrorException
+import bachelor.core.api.JobApi
+import bachelor.core.api.ResourceEvent
+import bachelor.core.api.isPodRunningOrTerminated
+import bachelor.core.api.isPodTerminated
 import bachelor.core.api.snapshot.*
 import bachelor.core.executor.*
 import org.apache.logging.log4j.LogManager
@@ -13,13 +13,18 @@ import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
 import reactor.kotlin.core.publisher.toMono
 import java.time.Duration
-class ReactiveJobExecutor(val api: JobApi): JobExecutor {
+
+class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
 
     private val logger = LogManager.getLogger()
 
 
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
-        return executeUntilTerminated(request).block() ?: ExecutionSnapshot(Logs.empty(), InitialJobSnapshot, InitialPodSnapshot)
+        return executeUntilTerminated(request).block() ?: ExecutionSnapshot(
+            Logs.empty(),
+            InitialJobSnapshot,
+            InitialPodSnapshot
+        )
     }
 
     fun executeUntilTerminated(request: JobExecutionRequest): Mono<ExecutionSnapshot> {
@@ -32,11 +37,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         val jobSnapshotStream = jobEventSink.asFlux().cache().flatMap { it.element.toMono() }
         val podSnapshotStream = podEventSink.asFlux().cache().flatMap { it.element.toMono() }
 
-        fun cleanUp(job: JobReference){
-            api.delete(job)
-        }
-
-        fun cleanUp(){
+        fun cleanUp() {
             jobEventSink.tryEmitComplete()
             podEventSink.tryEmitComplete()
             api.removeJobEventHandler(jobListener)
@@ -47,20 +48,19 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         return Mono.fromCallable {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
-        }
-            .then(Mono.defer { createJob(request) })
+        }.then(Mono.defer { createJob(request) })
             .flatMap { job ->
-            // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
-            val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
-                .transform { logAsTimed(it) }
-                .cache(1)
+                // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
+                val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
+                    .transform { logAsTimed(it) }
+                    .cache(1)
 
-            // get next snapshot, where pod is terminated
-            nextTerminatedSnapshot(stream, request.isRunningTimeout, request.isTerminatedTimeout)
-                .doOnNext { cleanUp(job) }
-                .doOnError { cleanUp(job) }
-                .doOnCancel { cleanUp(job) }
-        }
+                // get next snapshot, where pod is terminated
+                nextTerminatedSnapshot(stream, request.isRunningTimeout, request.isTerminatedTimeout)
+                    .doOnNext {api.delete(job) }
+                    .doOnError {api.delete(job) }
+                    .doOnCancel {api.delete(job) }
+            }
             .doOnError { cleanUp() }
             .doOnNext { cleanUp() }
             .doOnCancel { cleanUp() }
@@ -69,7 +69,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
     private fun createJob(request: JobExecutionRequest): Mono<JobReference> {
         return try {
             api.create(request.jobSpec).toMono()
-        } catch (e: Exception){
+        } catch (e: Exception) {
             e.toMono()
         }
     }
@@ -77,7 +77,7 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
     private fun getLogs(podSnapshot: ActivePodSnapshot): Mono<String> {
         return try {
             api.getLogs(podSnapshot.reference()).toMono()
-        }catch (e: Exception){
+        } catch (e: Exception) {
             e.toMono()
         }
     }
@@ -112,10 +112,14 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         return stream
             // Wait for running or terminated pod. On timeout, get the latest snapshot with logs and convert to an exception
             .filter { isPodRunningOrTerminated(it.podSnapshot) }
-            .timeoutFirst(isRunningTimeout, latestSnapshotWithLogs(stream).flatMap { podNotRunningError(it, isRunningTimeout) })
+            .timeoutFirst(
+                isRunningTimeout,
+                latestSnapshotWithLogs(stream).flatMap { podNotRunningError(it, isRunningTimeout) })
             // Wait for terminated pod. On timeout, get the latest snapshot with logs and convert to an exception
             .filter { isPodTerminated(it.podSnapshot) }
-            .timeoutFirst(isTerminatedTimeout, latestSnapshotWithLogs(stream).flatMap { podNotTerminatedError(it, isTerminatedTimeout) })
+            .timeoutFirst(
+                isTerminatedTimeout,
+                latestSnapshotWithLogs(stream).flatMap { podNotTerminatedError(it, isTerminatedTimeout) })
             // Take the first from the latest available snapshots, that contains terminated pod
             .next()
             .flatMap { populateWithLogs(it) }
@@ -157,10 +161,15 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
     }
 
 
-
     private fun logAsTimed(stream: Flux<ExecutionSnapshot>): Flux<ExecutionSnapshot> {
         return if (!logger.isDebugEnabled) stream else stream.timed()
-            .doOnNext { logger.info("(E): ${it.elapsedSinceSubscription().toMillis()}ms - ${it.get()}. ${System.currentTimeMillis()}") }
+            .doOnNext {
+                logger.info(
+                    "(E): ${
+                        it.elapsedSinceSubscription().toMillis()
+                    }ms - ${it.get()}. ${System.currentTimeMillis()}"
+                )
+            }
             .map { it.get() }
     }
 

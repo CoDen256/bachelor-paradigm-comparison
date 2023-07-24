@@ -12,7 +12,7 @@ import java.util.function.Predicate
 class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
 
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
-        val cachedJobEvents = ConcurrentLinkedQueue<ResourceEvent<ActiveJobSnapshot>>() // should it be here?
+        val cachedJobEvents = ConcurrentLinkedQueue<ResourceEvent<ActiveJobSnapshot>>() // should concurrent be here?
         val cachedPodEvents = ConcurrentLinkedQueue<ResourceEvent<ActivePodSnapshot>>()
         var job: JobReference? = null
         val jobListener = ResourceEventCollectionAdapter(cachedJobEvents)
@@ -91,10 +91,10 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
     }
 
     private fun populateWithLogs(s: ExecutionSnapshot): ExecutionSnapshot {
-        return ExecutionSnapshot(Logs(getLogs(s.podSnapshot)), s.jobSnapshot, s.podSnapshot)
+        return ExecutionSnapshot(getLogs(s.podSnapshot), s.jobSnapshot, s.podSnapshot)
     }
 
-    private fun getLogs(podSnapshot: PodSnapshot?): String? {
+    private fun getLogs(podSnapshot: PodSnapshot?): Logs {
         val logs = (podSnapshot as? ActivePodSnapshot)?.let {
             try {
                 api.getLogs(it.reference())
@@ -102,7 +102,7 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
                 null
             }
         }
-        return logs
+        return Logs(logs)
     }
 
 
@@ -163,9 +163,6 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
             events.map { it.element }
 
         }
-        return future
-            .orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS)
-
-        // why not cancelling
+        return future.orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS)
     }
 }
