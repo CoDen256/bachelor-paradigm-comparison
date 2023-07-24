@@ -48,70 +48,70 @@ abstract class AbstractJobExecutorTest(
     }
 
 
-//    @Nested
-//    @DisplayName("Given failure before or upon job creation When executed Then throw exception and unsubscribe")
-//    inner class GivenFailBeforeJobCreation {
-//
-//        @AfterEach
-//        fun teardown() {
-//            verify(api).addJobEventHandler(capture(jobHandlerCaptor))
-//            verify(api).removeJobEventHandler(jobHandlerCaptor.value)
-//        }
-//
-//        @Test
-//        fun `Given failed to add job handler Then rethrow and unsubscribe`() {
-//            whenever(api.addJobEventHandler(any())).thenThrow(IllegalArgumentException())
-//
-//
-//            assertThrows<IllegalArgumentException> {
-//                execute(millis(0), millis(0))
-//            }
-//
-//            verify(api).removePodEventHandler(any())
-//        }
-//
-//        @Test
-//        fun `Given failed to add pod handler Then rethrow and unsubscribe`() {
-//            whenever(api.addPodEventHandler(any())).thenThrow(IllegalStateException())
-//
-//            assertThrows<IllegalStateException> {
-//                execute(millis(0), millis(0))
-//            }
-//
-//            verify(api).addPodEventHandler(capture(podHandlerCaptor))
-//            verify(api).removePodEventHandler(podHandlerCaptor.value)
-//        }
-//
-//
-//        @Test
-//        fun `Given invalid job spec Then rethrow and unsubscribe`() {
-//            whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
-//
-//            assertThrows<InvalidJobSpecException> {
-//                execute(millis(0), millis(0))
-//            }
-//
-//            verify(api).addPodEventHandler(capture(podHandlerCaptor))
-//            verify(api).removePodEventHandler(podHandlerCaptor.value)
-//
-//            verify(api).create(JOB_SPEC)
-//        }
-//
-//
-//        @Test
-//        fun `Given job already exists Then rethrow and unsubscribe`() {
-//            whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
-//
-//            assertThrows<JobAlreadyExistsException> {
-//                execute(millis(0), millis(0))
-//            }
-//
-//            verify(api).addPodEventHandler(capture(podHandlerCaptor))
-//            verify(api).removePodEventHandler(podHandlerCaptor.value)
-//
-//            verify(api).create(JOB_SPEC)
-//        }
-//    }
+    @Nested
+    @DisplayName("Given failure before or upon job creation When executed Then throw exception and unsubscribe")
+    inner class GivenFailBeforeJobCreation {
+
+        @AfterEach
+        fun teardown() {
+            verify(api).addJobEventHandler(capture(jobHandlerCaptor))
+            verify(api).removeJobEventHandler(jobHandlerCaptor.value)
+        }
+
+        @Test
+        fun `Given failed to add job handler Then rethrow and unsubscribe`() {
+            whenever(api.addJobEventHandler(any())).thenThrow(IllegalArgumentException())
+
+
+            assertThrows<IllegalArgumentException> {
+                execute(millis(0), millis(0))
+            }
+
+            verify(api).removePodEventHandler(any())
+        }
+
+        @Test
+        fun `Given failed to add pod handler Then rethrow and unsubscribe`() {
+            whenever(api.addPodEventHandler(any())).thenThrow(IllegalStateException())
+
+            assertThrows<IllegalStateException> {
+                execute(millis(0), millis(0))
+            }
+
+            verify(api).addPodEventHandler(capture(podHandlerCaptor))
+            verify(api).removePodEventHandler(podHandlerCaptor.value)
+        }
+
+
+        @Test
+        fun `Given invalid job spec Then rethrow and unsubscribe`() {
+            whenever(api.create(JOB_SPEC)).thenThrow(InvalidJobSpecException("", null))
+
+            assertThrows<InvalidJobSpecException> {
+                execute(millis(0), millis(0))
+            }
+
+            verify(api).addPodEventHandler(capture(podHandlerCaptor))
+            verify(api).removePodEventHandler(podHandlerCaptor.value)
+
+            verify(api).create(JOB_SPEC)
+        }
+
+
+        @Test
+        fun `Given job already exists Then rethrow and unsubscribe`() {
+            whenever(api.create(JOB_SPEC)).thenThrow(JobAlreadyExistsException("", null))
+
+            assertThrows<JobAlreadyExistsException> {
+                execute(millis(0), millis(0))
+            }
+
+            verify(api).addPodEventHandler(capture(podHandlerCaptor))
+            verify(api).removePodEventHandler(podHandlerCaptor.value)
+
+            verify(api).create(JOB_SPEC)
+        }
+    }
 
 
     @Nested
@@ -132,7 +132,7 @@ abstract class AbstractJobExecutorTest(
             verify(api).addPodEventHandler(capture(podHandlerCaptor))
             verify(api).removePodEventHandler(podHandlerCaptor.value)
 
-//            verify(api).create(JOB_SPEC)
+            verify(api).create(JOB_SPEC)
             verify(api).delete(jobRef)
         }
 
@@ -945,7 +945,7 @@ abstract class AbstractJobExecutorTest(
 
                 // execute
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
-                    execute(millis(150), millis(150), "AAAAAA")
+                    execute(millis(150), millis(150))
                 }
 
                 assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
@@ -1185,7 +1185,7 @@ abstract class AbstractJobExecutorTest(
 
 
             @Test
-            fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
+            fun `Given running directly running and successfully terminated in 200ms pod event Then the terminated snapshot`() {
                 podEvents.addAll(listOf(
                     // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
                     add(runningPodSnapshot), // 0ms
@@ -1201,27 +1201,43 @@ abstract class AbstractJobExecutorTest(
                 assertEquals(snapshot(pod = succeededPodSnapshot), result)
             }
 
-//            @Test
-//            fun `Given running direct and successfully terminated after 300ms pod event Then the terminated snapshot`() {
-//                podEvents.addAll(listOf(
-//                    // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
-//                    add(runningPodSnapshot), // 0ms
-//                    noop(), // 100ms
-//                    // 100ms running timeout
-//                    // 100ms terminated timeout
-//                    noop(), // 200ms
-//                    add(succeededPodSnapshot) // 300ms
-//                ))
-//
-//                // execute
-//                val ex = assertThrows<PodNotTerminatedTimeoutException> {
-//                    execute(millis(100), millis(100))
-//                }
-//
-//
-//                assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
-//                assertEquals(millis(100), ex.timeout)
-//            }
+            @Test
+            fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    noop(), // 0ms
+                    add(succeededPodSnapshot) // 100ms
+                    // 200ms running timeout
+                    // 200ms terminated timeout
+                ))
+
+                // execute
+                val result = execute(millis(200), millis(200))
+
+
+                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+            }
+
+            @Test
+            fun `Given running direct and successfully terminated after 300ms pod event Then the terminated snapshot`() {
+                podEvents.addAll(listOf(
+                    // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
+                    add(runningPodSnapshot), // 0ms
+                    noop(), // 100ms
+                    // 100ms running timeout
+                    // 100ms terminated timeout
+                    noop(), // 200ms
+                    add(succeededPodSnapshot) // 300ms
+                ))
+
+                // execute
+                val ex = assertThrows<PodNotTerminatedTimeoutException> {
+                    execute(millis(100), millis(100))
+                }
+
+
+                assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
+                assertEquals(millis(100), ex.timeout)
+            }
 
 
             @Test
@@ -1264,11 +1280,10 @@ abstract class AbstractJobExecutorTest(
     private fun execute(
         runningTimeout: Duration = millis(10_000),
         terminatedTimeout: Duration = millis(10_000),
-        jobSpec: String = JOB_SPEC,
     ): ExecutionSnapshot {
         return executor.execute(
             JobExecutionRequest(
-                jobSpec,
+                JOB_SPEC,
                 runningTimeout,
                 terminatedTimeout
             )
