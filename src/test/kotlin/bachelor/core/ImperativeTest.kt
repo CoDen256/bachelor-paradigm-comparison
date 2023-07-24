@@ -23,6 +23,7 @@ import org.mockito.kotlin.capture
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
+import reactor.core.publisher.Flux
 import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -68,9 +69,11 @@ class ImperativeTest {
     private lateinit var executor: JobExecutor
     private val jobRef = JobReference("jobName", "jobUid", "ns")
 
+    private var name: String = ""
 
     @BeforeEach
     fun setup() {
+        println("TEST STARTED")
         executor = ImperativeJobExecutor(api)
         podEvents.clear()
         whenever(api.create(any())).thenReturn(jobRef)
@@ -80,13 +83,13 @@ class ImperativeTest {
     }
     @AfterEach
     fun teardown(){
+        println("TEST ENDED: : ${name}")
         verify(api).addJobEventHandler(capture(jobHandlerCaptor))
         verify(api).removeJobEventHandler(jobHandlerCaptor.value)
 
         verify(api).addPodEventHandler(capture(podHandlerCaptor))
         verify(api).removePodEventHandler(podHandlerCaptor.value)
 
-//            verify(api).create(JOB_SPEC)
         verify(api).delete(jobRef)
         verify(api).getLogs(podRef)
     }
@@ -94,6 +97,7 @@ class ImperativeTest {
     @Test
     @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
     fun `Given successfully terminated pod event Then the terminated snapshot`() {
+        name = "tRT->t"
         podEvents.addAll(listOf(
             add(succeededPodSnapshot) // 0ms
         ))
@@ -109,6 +113,7 @@ class ImperativeTest {
     @Test
     @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
     fun `Given running and successfully terminated pod event Then the terminated snapshot`() {
+        name = "rRntT->t"
         podEvents.addAll(listOf(
             add(runningPodSnapshot), // 0ms
             // 50ms running timeout
@@ -126,6 +131,8 @@ class ImperativeTest {
 
     @Test
     fun `Given running waiting and successfully terminated pod event Then the terminated snapshot`() {
+        name = "rRwTt->PNT"
+
         podEvents.addAll(listOf(
             add(runningPodSnapshot), // 0ms
             // running timeout
@@ -146,7 +153,8 @@ class ImperativeTest {
 
 
     @Test
-    fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
+    fun `Given running running and directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
+        name = "rt(R+T)"
         podEvents.addAll(listOf(
             // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
             add(runningPodSnapshot), // 0ms
@@ -162,18 +170,57 @@ class ImperativeTest {
         assertEquals(snapshot(pod = succeededPodSnapshot), result)
     }
 
+    @Test
+    fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
+        name = "t(R+T)"
+        podEvents.addAll(listOf(
+            noop(), // 0ms
+            add(succeededPodSnapshot) // 100ms
+            // 200ms running timeout
+            // 200ms terminated timeout
+        ))
+
+        // execute
+        val result = execute(millis(200), millis(200))
+
+
+        assertEquals(snapshot(pod = succeededPodSnapshot), result)
+    }
+
+    @Test
+    fun `Given delayed successfully terminated pod event Then the terminated snapshot`() {
+        name = "rRTt -> PNT"
+        podEvents.addAll(listOf(
+            add(intermediateRunningPodSnapshot), // 0ms
+            // 50ms running timeout
+            // 90ms terminated timeout
+            add(succeededPodSnapshot) // 100ms
+        ))
+        execute(millis(1150), millis(1190))
+
+        Thread.sleep(5000)
+//        // execute
+//
+//        val ex = assertThrows<PodNotTerminatedTimeoutException> {
+//        }
+//
+//        assertEquals(snapshot(pod = intermediateRunningPodSnapshot), ex.currentState)
+//        assertEquals(millis(90), ex.timeout)
+    }
+
     private fun emitDelayed(
         resourceEvents: List<ResourceEvent<ActivePodSnapshot>>,
         handler: ResourceEventHandler<ActivePodSnapshot>,
         interval: Long
     ) {
-        Executors.newSingleThreadExecutor().submit {
-            resourceEvents.forEach {
+        val localName = name
+        Flux.interval(Duration.ZERO, Duration.ofMillis(interval))
+            .take(resourceEvents.size.toLong())
+            .map { resourceEvents[it.toInt()] }
+            .subscribe {
+                println("\n----------------[EMITTED $localName] $it, ${System.currentTimeMillis().toString().substring(9, 13)}  [EMITTED] ------------")
                 handler.onEvent(it)
-                println("Emitted $it, ${System.currentTimeMillis()}")
-                Thread.sleep(interval)
             }
-        }
     }
 
     private fun execute(
@@ -181,9 +228,10 @@ class ImperativeTest {
         terminatedTimeout: Duration = millis(10_000),
         jobSpec: String = JOB_SPEC,
     ): ExecutionSnapshot {
+        println("TEST EXECUTING: $name")
         return executor.execute(
             JobExecutionRequest(
-                jobSpec,
+                name,
                 runningTimeout,
                 terminatedTimeout
             )
