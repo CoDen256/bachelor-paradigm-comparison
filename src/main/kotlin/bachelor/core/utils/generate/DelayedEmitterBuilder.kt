@@ -52,6 +52,13 @@ class DelayedEmitterBuilder<T> {
         return this
     }
 
+    fun reset(): DelayedEmitterBuilder<T> {
+        elements.clear()
+        delays.clear()
+        complete = false
+        return this
+    }
+
     /**
      * Build a publisher, that emits elements with variable delays. If the
      * [complete] is not set, the resulting flux won't emit a completion signal
