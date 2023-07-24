@@ -26,38 +26,21 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
         val jobEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActiveJobSnapshot>>()
         val podEventSink = Sinks.many().multicast().onBackpressureBuffer<ResourceEvent<ActivePodSnapshot>>()
 
-        val podListener = object: ResourceEventHandler<ActivePodSnapshot> {
-            override fun onEvent(event: ResourceEvent<ActivePodSnapshot>) {
-                podEventSink.tryEmitNext(event)
-            }
-
-            override fun onError(t: Throwable) {
-                podEventSink.tryEmitError(t)
-            }
-
-            override fun close() {
-                podEventSink.tryEmitComplete()
-            }
-        }
-        val jobListener = object: ResourceEventHandler<ActiveJobSnapshot> {
-            override fun onEvent(event: ResourceEvent<ActiveJobSnapshot>) {
-                jobEventSink.tryEmitNext(event)
-            }
-
-            override fun onError(t: Throwable) {
-                jobEventSink.tryEmitError(t)
-            }
-
-            override fun close() {
-                jobEventSink.tryEmitComplete()
-            }
-        }
+        val podListener = ResourceEventSinkAdapter(podEventSink)
+        val jobListener = ResourceEventSinkAdapter(jobEventSink)
 
         val jobSnapshotStream = jobEventSink.asFlux().cache().flatMap { it.element.toMono() }
         val podSnapshotStream = podEventSink.asFlux().cache().flatMap { it.element.toMono() }
 
         fun cleanUp(job: JobReference){
             api.delete(job)
+        }
+
+        fun cleanUp(){
+            jobEventSink.tryEmitComplete()
+            podEventSink.tryEmitComplete()
+            api.removeJobEventHandler(jobListener)
+            api.removePodEventHandler(podListener)
         }
 
         // deserialize job spec, create and run the job in the cluster
@@ -77,23 +60,10 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
                 .doOnNext { cleanUp(job) }
                 .doOnError { cleanUp(job) }
                 .doOnCancel { cleanUp(job) }
-        }.doOnError {
-                jobEventSink.tryEmitComplete()
-                podEventSink.tryEmitComplete()
-                api.removeJobEventHandler(jobListener)
-                api.removePodEventHandler(podListener)
-        }.doOnNext {
-                jobEventSink.tryEmitComplete()
-                podEventSink.tryEmitComplete()
-                api.removeJobEventHandler(jobListener)
-                api.removePodEventHandler(podListener)
-            }
-            .doOnCancel {
-                jobEventSink.tryEmitComplete()
-                podEventSink.tryEmitComplete()
-                api.removeJobEventHandler(jobListener)
-                api.removePodEventHandler(podListener)
-            }
+        }
+            .doOnError { cleanUp() }
+            .doOnNext { cleanUp() }
+            .doOnCancel { cleanUp() }
     }
 
     private fun createJob(request: JobExecutionRequest): Mono<JobReference> {
@@ -132,7 +102,6 @@ class ReactiveJobExecutor(val api: JobApi): JobExecutor {
     private fun <T : Any> insertAtStart(element: T, source: Flux<out T>): Flux<T> {
         return Flux.concat(Mono.just(element), source)
     }
-
 
     internal fun nextTerminatedSnapshot(
         stream: Flux<ExecutionSnapshot>,
