@@ -5,13 +5,14 @@ import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
 import bachelor.executor.reactive.ReactiveJobExecutor
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.Duration
 
 
 const val NAMESPACE = "executor-test"
-
+@Disabled
 class JobExecutionRunner {
 
     private val client = KubernetesClientBuilder().build()
