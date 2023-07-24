@@ -1100,21 +1100,21 @@ abstract class AbstractJobExecutorTest(private val createExecutor: (JobApi) -> J
 
 
             private val waitingPodSnapshot =
-                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING)
+                add(ActivePodSnapshot("podName", "podUid", "ns", "jobUid", waiting(), Phase.PENDING))
             private val intermediateRunningPodSnapshot =
-                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.PENDING)
+                add(ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.PENDING))
             private val runningPodSnapshot =
-                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING)
+                add(ActivePodSnapshot("podName", "podUid", "ns", "jobUid", running(), Phase.RUNNING))
             private val terminatedPodSnapshot =
-                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(1), Phase.RUNNING)
+                add(ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(1), Phase.RUNNING))
             private val succeededPodSnapshot =
-                ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(0), Phase.RUNNING)
+                add(ActivePodSnapshot("podName", "podUid", "ns", "jobUid", terminated(0), Phase.RUNNING))
 
 
             private val randomPodSnapshot =
                 ActivePodSnapshot("podName", "podUid", "ns", "random", running(), Phase.RUNNING)
 
-            private val podRef = runningPodSnapshot.reference()
+            private val podRef = runningPodSnapshot.element!!.reference()
 
 
 
@@ -1132,40 +1132,44 @@ abstract class AbstractJobExecutorTest(private val createExecutor: (JobApi) -> J
             @Test
             @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
             fun `Given successfully terminated pod event Then the terminated snapshot`() {
-                emitPod(add(succeededPodSnapshot)) // 0ms
+                podEvents {
+                    emit(succeededPodSnapshot) // 0ms
+                }
 
                 // execute
 
                 val result = execute(millis(5000), millis(10000))
 
 
-                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+                assertEquals(snapshot(pod = succeededPodSnapshot.element!!), result)
             }
 
             @Test
             @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
             fun `Given running and successfully terminated pod event Then the terminated snapshot`() {
-                emitPod(add(runningPodSnapshot)) // 0ms
-                // 50ms running timeout
-                emitPod(millis(200), add(succeededPodSnapshot)) // 200ms
-
+                podEvents {
+                    emit(runningPodSnapshot) // 0ms
+                    // 50ms running timeout
+                    emit(millis(200), succeededPodSnapshot) // 200ms
+                }
 
                 // execute
 
                 val result = execute(millis(50), millis(10000))
 
 
-                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+                assertEquals(snapshot(pod = succeededPodSnapshot.element!!), result)
             }
 
             @Test
             fun `Given running waiting and successfully terminated pod event Then the terminated snapshot`() {
-                emitPod(add(runningPodSnapshot)) // 0ms
-                // 50ms running timeout
-                emitPod(millis(100), add(waitingPodSnapshot)) // 100ms
-                // 140ms terminated timeout
-                emitPod(millis(200), add(succeededPodSnapshot)) // 200ms
-
+                podEvents (
+                    millis(0)   to runningPodSnapshot,
+                    // 50ms running timeout
+                    millis(100) to waitingPodSnapshot,
+                    // 140ms terminated timeout
+                    millis(200) to succeededPodSnapshot
+                )
 
                 // execute
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
@@ -1173,49 +1177,52 @@ abstract class AbstractJobExecutorTest(private val createExecutor: (JobApi) -> J
                 }
 
 
-                assertEquals(snapshot(pod = waitingPodSnapshot), ex.currentState)
+                assertEquals(snapshot(pod = waitingPodSnapshot.element!!), ex.currentState)
                 assertEquals(millis(140), ex.timeout)
             }
 
 
             @Test
             fun `Given running directly running and successfully terminated in 200ms pod event Then the terminated snapshot`() {
-                // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
-                emitPod(add(runningPodSnapshot)) // 0ms
-                emitPod(millis(100), add(succeededPodSnapshot)) // 100ms
-                // 200ms running timeout
-                // 200ms terminated timeout
-
+                podEvents {
+                    // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
+                    emit(runningPodSnapshot) // 0ms
+                    emit(millis(100), succeededPodSnapshot) // 100ms
+                    // 200ms running timeout
+                    // 200ms terminated timeout
+                }
 
                 // execute
                 val result = execute(millis(200), millis(200))
 
 
-                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+                assertEquals(snapshot(pod = succeededPodSnapshot.element!!), result)
             }
 
             @Test
             fun `Given running directly successfully terminated in 200ms pod event Then the terminated snapshot`() {
-                emitPod(millis(100), add(succeededPodSnapshot) )// 100ms
-                // 200ms running timeout
-                // 200ms terminated timeout
-
+                podEvents {
+                    emit(millis(100), succeededPodSnapshot)// 100ms
+                    // 200ms running timeout
+                    // 200ms terminated timeout
+                }
 
                 // execute
                 val result = execute(millis(200), millis(200))
 
 
-                assertEquals(snapshot(pod = succeededPodSnapshot), result)
+                assertEquals(snapshot(pod = succeededPodSnapshot.element!!), result)
             }
 
             @Test
             fun `Given running direct and successfully terminated after 300ms pod event Then the terminated snapshot`() {
-                // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
-                emitPod(add(runningPodSnapshot)) // 0ms
-                // 100ms running timeout
-                // 100ms terminated timeout
-                emitPod(millis(300), add(succeededPodSnapshot)) // 300ms
-
+                podEvents {
+                    // running pod is directly emitted, but during terminated should be still able to wait for 200 ms
+                    emit(runningPodSnapshot) // 0ms
+                    // 100ms running timeout
+                    // 100ms terminated timeout
+                    emit(millis(300), succeededPodSnapshot) // 300ms
+                }
 
                 // execute
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
@@ -1223,25 +1230,26 @@ abstract class AbstractJobExecutorTest(private val createExecutor: (JobApi) -> J
                 }
 
 
-                assertEquals(snapshot(pod = runningPodSnapshot), ex.currentState)
+                assertEquals(snapshot(pod = runningPodSnapshot.element!!), ex.currentState)
                 assertEquals(millis(100), ex.timeout)
             }
 
 
             @Test
             fun `Given delayed successfully terminated pod event Then the terminated snapshot`() {
-                emitPod(add(intermediateRunningPodSnapshot)) // 0ms
-                // 50ms running timeout
-                // 90ms terminated timeout
-                emitPod(millis(200), add(succeededPodSnapshot) )// 200ms
-
+                podEvents {
+                    emit(intermediateRunningPodSnapshot) // 0ms
+                    // 50ms running timeout
+                    // 90ms terminated timeout
+                    emit(millis(200), succeededPodSnapshot)// 200ms
+                }
                 // execute
 
                 val ex = assertThrows<PodNotTerminatedTimeoutException> {
                     execute(millis(50), millis(90))
                 }
 
-                assertEquals(snapshot(pod = intermediateRunningPodSnapshot), ex.currentState)
+                assertEquals(snapshot(pod = intermediateRunningPodSnapshot.element!!), ex.currentState)
                 assertEquals(millis(90), ex.timeout)
             }
         }
@@ -1269,29 +1277,19 @@ abstract class AbstractJobExecutorTest(private val createExecutor: (JobApi) -> J
             }
     }
 
-    fun emitPod(delay: Duration, vararg elements: ResourceEvent<ActivePodSnapshot>) {
-        podEventEmitter.emit(delay, *elements)
+    fun podEvents(build: DelayedEmitterBuilder<ResourceEvent<ActivePodSnapshot>>.() -> Unit) {
+        build(podEventEmitter)
+    }
+    fun podEvents(vararg events: Pair<Duration, ResourceEvent<ActivePodSnapshot>>) {
+        events.forEach { (delay, element) ->
+            podEventEmitter.emit(delay, element)
+        }
     }
 
-    fun emitJob(delay: Duration, vararg elements: ResourceEvent<ActiveJobSnapshot>) {
-        jobEventEmitter.emit(delay, *elements)
+    fun jobEvents(build: DelayedEmitterBuilder<ResourceEvent<ActiveJobSnapshot>>.() -> Unit) {
+        build(jobEventEmitter)
     }
 
-    fun emitPod(vararg elements: ResourceEvent<ActivePodSnapshot>) {
-        podEventEmitter.emit(*elements)
-    }
-
-    fun emitJob(vararg elements: ResourceEvent<ActiveJobSnapshot>) {
-        jobEventEmitter.emit(*elements)
-    }
-
-    fun delayPod(delay: Duration) {
-        podEventEmitter.delay(delay)
-    }
-
-    fun delayJob(delay: Duration) {
-        jobEventEmitter.delay(delay)
-    }
 
 
     private fun execute(
