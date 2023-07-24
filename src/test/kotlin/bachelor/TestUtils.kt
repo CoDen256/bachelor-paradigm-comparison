@@ -47,7 +47,6 @@ fun <T> cachedEmitter(builder: DelayedEmitterBuilder<T>.() -> DelayedEmitterBuil
 }
 
 fun millis(millis: Long): Duration = Duration.ofMillis(millis)
-
 // GENERAL HELPER METHODS
 private val loader = JobTemplateFileLoader(File(JobExecutionRunner::class.java.getResource("/template/client-test-job.yaml")!!.toURI()))
 

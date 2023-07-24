@@ -2,8 +2,8 @@ package bachelor.executor.imperative
 
 import bachelor.core.api.JobApi
 import bachelor.core.api.ResourceEvent
-import bachelor.core.api.ResourceEventHandler
 import bachelor.core.api.snapshot.*
+import bachelor.core.currentTime
 import bachelor.core.executor.*
 import java.time.Duration
 import java.util.concurrent.*
@@ -15,19 +15,14 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
         val cachedJobEvents = ConcurrentLinkedQueue<ResourceEvent<ActiveJobSnapshot>>() // should it be here?
         val cachedPodEvents = ConcurrentLinkedQueue<ResourceEvent<ActivePodSnapshot>>()
         var job: JobReference? = null
-        val jobListener = ResourceEventHandler {
-            cachedJobEvents.add(it)
-        }
-        val podListener = ResourceEventHandler {
-            println("----------------[RECEIVED] $it, ${time()}  [RECEIVED] ------------\n")
-            cachedPodEvents.add(it)
-        }
+        val jobListener = ResourceEventCollectionAdapter(cachedJobEvents)
+        val podListener = ResourceEventCollectionAdapter(cachedPodEvents)
         try {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
-            println("---------------------[HANDLER ADDED ${time()}]------------------------------")
+            println("---------------------[HANDLER ADDED ${currentTime()}]------------------------------")
             job = api.create(request.jobSpec)
-            println("---------------------[CREATED JOB ${time()}]------------------------------")
+            println("---------------------[CREATED JOB ${currentTime()}]------------------------------")
 
             val checkRunningCondition = checkPodCondition(
                 request.isRunningTimeout,
@@ -69,16 +64,10 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
     private fun isRunning(podSnapshot: PodSnapshot?) =
         podSnapshot is ActivePodSnapshot && (podSnapshot.mainContainerState is RunningState)
 
-    private fun notTerminated(newPodSnapshot: PodSnapshot?) =
-        newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState !is TerminatedState
-
     private fun isTerminated(newPodSnapshot: PodSnapshot?) =
         newPodSnapshot is ActivePodSnapshot && newPodSnapshot.mainContainerState is TerminatedState
 
-    private fun verifyExitCode(
-        mainContainerState: TerminatedState,
-        currentState: ExecutionSnapshot
-    ): ExecutionSnapshot {
+    private fun verifyExitCode(mainContainerState: TerminatedState, currentState: ExecutionSnapshot): ExecutionSnapshot {
         return if (mainContainerState.exitCode == 0) {
             populateWithLogs(currentState)
         } else {
@@ -119,23 +108,23 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
 
     private fun <T> waitUntilDone(name: String, timeout: Duration, future: Future<T>): T? {
         return try {
-            println("$name started / ${time()}")
+            println("$name started / ${currentTime()}")
             val r = future.get()
-            println("$name success $r / ${time()}")
+            println("$name success $r / ${currentTime()}")
             return r
         } catch (e: TimeoutException) {
-            println("$name fail $e / ${time()}")
+            println("$name fail $e / ${currentTime()}")
             null
         } catch (e: ExecutionException) {
-            println("$name fail $e / ${time()}")
+            println("$name fail $e / ${currentTime()}")
             null
         } catch (e: Exception) {
-            println("$name fail $e / ${time()}")
+            println("$name fail $e / ${currentTime()}")
             null
         } finally {
-            println("$name cancelling [c: ${future.isCancelled} d:${future.isDone}] / ${time()}")
+            println("$name cancelling [c: ${future.isCancelled} d:${future.isDone}] / ${currentTime()}")
             future.cancel(true)
-            println("$name ended [c: ${future.isCancelled} d:${future.isDone}] / ${time()}")
+            println("$name ended [c: ${future.isCancelled} d:${future.isDone}] / ${currentTime()}")
         }
     }
 
@@ -148,10 +137,10 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
     ): Future<List<ActivePodSnapshot?>> {
         val future = CompletableFuture<List<ActivePodSnapshot?>>()
         future.completeAsync {
-            println("[$name] START / ${time()}")
+            println("[$name] START / ${currentTime()}")
             var i = 0
             while (true) {
-                println("[$name] CHECK $i [c: ${future.isCancelled} e: ${future.isCompletedExceptionally} d:${future.isDone}] + ${events.mapNotNull { it.element }} / ${time()}")
+                println("[$name] CHECK $i [c: ${future.isCancelled} e: ${future.isCompletedExceptionally} d:${future.isDone}] + ${events.mapNotNull { it.element }} / ${currentTime()}")
                 if (condition.test(events.mapNotNull { it.element })
                     || future.isCancelled
                     || future.isCompletedExceptionally
@@ -170,7 +159,7 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
             } else {
                 println("[$name] DONE ${events.map { it.element }}")
             }
-            println("[$name] END / ${time()}")
+            println("[$name] END / ${currentTime()}")
             events.map { it.element }
 
         }
@@ -179,10 +168,4 @@ class ImperativeJobExecutor(private val api: JobApi) : JobExecutor {
 
         // why not cancelling
     }
-
-    private fun time() = System.currentTimeMillis().toString().substring(9, 13)
-
-
-    class ExceptionHolder(val supplyException: (ExecutionSnapshot) -> Exception) : Exception()
-
 }
