@@ -27,6 +27,7 @@ import bachelor.getJobs
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import reactor.core.publisher.Mono
@@ -54,6 +55,10 @@ abstract class AbstractJobExecutorIT (
     private lateinit var executor: JobExecutor
     private lateinit var runner: KubernetesBasedImageRunner
 
+    companion object Recorder {
+        val times = ArrayList<Long>()
+    }
+
     @BeforeEach
     fun startup() {
         api = Fabric8JobApi(helper, NAMESPACE)
@@ -65,6 +70,8 @@ abstract class AbstractJobExecutorIT (
 
     @Test
     fun successful_shortExecution() {
+        val start = System.currentTimeMillis()
+
         api.startListeners()
 
         val result = runner.run(
@@ -84,10 +91,17 @@ abstract class AbstractJobExecutorIT (
         assertEquals(expectedLogs, result.logs)
 
         api.stopListeners()
+        val stop = System.currentTimeMillis()
+
+        times.add(stop - start)
+        println("EXECUTED: ${stop - start}ms")
+        println("TOTAL: $times")
+        println("AVERAGE: ${times.subList(0, times.size/2).average()} : ${times.subList(times.size/2, times.size).average()}")
     }
 
-    @Test
+    @RepeatedTest(1)
     fun successful_longExecution() {
+        val start = System.currentTimeMillis()
         api.startListeners()
 
         val result = runner.run(
@@ -107,6 +121,11 @@ abstract class AbstractJobExecutorIT (
         assertEquals(expectedLogs, result.logs)
 
         api.stopListeners()
+        val stop = System.currentTimeMillis()
+        times.add(stop - start)
+        println("EXECUTED: ${stop - start}ms")
+        println("TOTAL: $times")
+        println("AVERAGE: ${times.subList(0, times.size/2).average()} : ${times.subList(times.size/2, times.size).average()}")
     }
 
     @Test

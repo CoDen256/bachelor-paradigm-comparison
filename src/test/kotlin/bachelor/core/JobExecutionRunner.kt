@@ -3,6 +3,7 @@ package bachelor.core
 import bachelor.core.impl.api.fabric8.Fabric8JobApi
 import bachelor.core.impl.template.BaseJobTemplateFiller
 import bachelor.core.impl.template.JobTemplateFileLoader
+import bachelor.executor.imperative.ImperativeJobExecutor
 import bachelor.executor.reactive.ReactiveJobExecutor
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import org.junit.jupiter.api.Disabled
@@ -47,15 +48,21 @@ class JobExecutionRunner {
 
     @Test
     fun imperativeJobExecutor() {
-//        val executor = ImperativeJobExecutor()
-//        KubernetesBasedImageRunner(executor, templateLoader, templateFiller)
-//            .run(
-//                ImageRunRequest.from("test-rscript", "main.R", listOf("1", "2", "3"),"latest"),
-//                Duration.ofSeconds(50), Duration.ofSeconds(50),
-//            ).doOnEach {
-//                println(it)
-//            }.subscribe {
-//                println(it)
-//            }
+        api.startListeners()
+
+        val executor = ImperativeJobExecutor(api)
+        val request = ImageRunRequest("test-job", "executor-test", "test-rscript:latest", arguments =  listOf("main.R", "1", "2", "3"))
+        val runningTimeout = Duration.ofSeconds(50)
+        val terminatedTimeout = Duration.ofSeconds(50)
+        KubernetesBasedImageRunner(executor, templateLoader, templateFiller)
+            .run(
+                request,
+                runningTimeout, terminatedTimeout,
+            ).doOnEach {
+                println(it)
+            }.subscribe {
+                println(it)
+            }
+        api.stopListeners()
     }
 }

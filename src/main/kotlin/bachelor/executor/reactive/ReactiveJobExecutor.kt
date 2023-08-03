@@ -37,51 +37,39 @@ class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
         val jobSnapshotStream = jobEventSink.asFlux().cache().flatMap { it.element.toMono() }
         val podSnapshotStream = podEventSink.asFlux().cache().flatMap { it.element.toMono() }
 
-        fun cleanUp() {
-            jobEventSink.tryEmitComplete()
-            podEventSink.tryEmitComplete()
-            api.removeJobEventHandler(jobListener)
-            api.removePodEventHandler(podListener)
-        }
 
         // deserialize job spec, create and run the job in the cluster
         return Mono.fromCallable {
             api.addJobEventHandler(jobListener)
             api.addPodEventHandler(podListener)
-        }.then(Mono.defer { createJob(request) })
-            .flatMap { job ->
-                // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
-                val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
-                    .transform { logAsTimed(it) }
-                    .cache(1)
-
-                // get next snapshot, where pod is terminated
-                nextTerminatedSnapshot(stream, request.isRunningTimeout, request.isTerminatedTimeout)
-                    .doOnNext {api.delete(job) }
-                    .doOnError {api.delete(job) }
-                    .doOnCancel {api.delete(job) }
-            }
-            .doOnError { cleanUp() }
-            .doOnNext { cleanUp() }
-            .doOnCancel { cleanUp() }
-    }
-
-    private fun createJob(request: JobExecutionRequest): Mono<JobReference> {
-        return try {
-            api.create(request.jobSpec).toMono()
-        } catch (e: Exception) {
-            e.toMono()
+            api.create(request.jobSpec)
+        }.flatMap { job ->
+            mono(podSnapshotStream, jobSnapshotStream, job, request)
+                .doOnNext { api.delete(job) }
+                .doOnError { api.delete(job) }
+                .doOnCancel { api.delete(job) }
+        }.doFinally {
+                jobEventSink.tryEmitComplete()
+                podEventSink.tryEmitComplete()
+                api.removeJobEventHandler(jobListener)
+                api.removePodEventHandler(podListener)
         }
     }
 
-    private fun getLogs(podSnapshot: ActivePodSnapshot): Mono<String> {
-        return try {
-            api.getLogs(podSnapshot.reference()).toMono()
-        } catch (e: Exception) {
-            e.toMono()
-        }
-    }
+    private fun mono(
+        podSnapshotStream: Flux<ActivePodSnapshot>,
+        jobSnapshotStream: Flux<ActiveJobSnapshot>,
+        job: JobReference,
+        request: JobExecutionRequest
+    ): Mono<ExecutionSnapshot> {
+        // filter relevant snapshots and combine both streams, providing initial snapshots. cache(1) so .next() provides the latest available snapshot
+        val stream = filterAndCombineSnapshots(podSnapshotStream, jobSnapshotStream, job.uid)
+            .transform { logAsTimed(it) }
+            .cache(1)
 
+        // get next snapshot, where pod is terminated
+        return nextTerminatedSnapshot(stream, request.isRunningTimeout, request.isTerminatedTimeout)
+    }
 
     internal fun filterAndCombineSnapshots(
         pods: Flux<ActivePodSnapshot>,
@@ -112,14 +100,10 @@ class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
         return stream
             // Wait for running or terminated pod. On timeout, get the latest snapshot with logs and convert to an exception
             .filter { isPodRunningOrTerminated(it.podSnapshot) }
-            .timeoutFirst(
-                isRunningTimeout,
-                latestSnapshotWithLogs(stream).flatMap { podNotRunningError(it, isRunningTimeout) })
+            .timeoutFirst(isRunningTimeout, latestSnapshotWithLogs(stream).flatMap { PodNotRunningTimeoutException(it, isRunningTimeout).toMono() })
             // Wait for terminated pod. On timeout, get the latest snapshot with logs and convert to an exception
             .filter { isPodTerminated(it.podSnapshot) }
-            .timeoutFirst(
-                isTerminatedTimeout,
-                latestSnapshotWithLogs(stream).flatMap { podNotTerminatedError(it, isTerminatedTimeout) })
+            .timeoutFirst(isTerminatedTimeout, latestSnapshotWithLogs(stream).flatMap { PodNotTerminatedTimeoutException(it, isTerminatedTimeout).toMono() })
             // Take the first from the latest available snapshots, that contains terminated pod
             .next()
             .flatMap { populateWithLogs(it) }
@@ -138,7 +122,7 @@ class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
         // isPodTerminated is true at this point
         val terminatedState = (snap.podSnapshot as ActivePodSnapshot).mainContainerState as TerminatedState
         if (terminatedState.exitCode != 0) {
-            return podTerminatedWithErrorException(snap, terminatedState.exitCode)
+            return PodTerminatedWithErrorException(snap, terminatedState.exitCode).toMono()
         }
         return Mono.just(snap)
     }
@@ -157,7 +141,7 @@ class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
 
     private fun getLogs(podSnapshot: PodSnapshot): Mono<Logs> {
         if (podSnapshot !is ActivePodSnapshot) return Mono.empty()
-        return getLogs(podSnapshot).map { Logs(it) }
+        return api.getLogs(podSnapshot.reference()).toMono().map { Logs(it) }
     }
 
 
@@ -171,18 +155,6 @@ class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
                 )
             }
             .map { it.get() }
-    }
-
-    private fun <T> podTerminatedWithErrorException(it: ExecutionSnapshot, exitCode: Int): Mono<T> {
-        return PodTerminatedWithErrorException(it, exitCode).toMono()
-    }
-
-    private fun <T> podNotTerminatedError(snapshot: ExecutionSnapshot, timeout: Duration): Mono<T> {
-        return PodNotTerminatedTimeoutException(snapshot, timeout).toMono()
-    }
-
-    private fun <T> podNotRunningError(snapshot: ExecutionSnapshot, timeout: Duration): Mono<T> {
-        return PodNotRunningTimeoutException(snapshot, timeout).toMono()
     }
 
 }
