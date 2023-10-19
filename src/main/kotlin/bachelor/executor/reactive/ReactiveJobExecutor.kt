@@ -20,7 +20,8 @@ class ReactiveJobExecutor(val api: JobApi) : JobExecutor {
 
 
     override fun execute(request: JobExecutionRequest): ExecutionSnapshot {
-        return executeUntilTerminated(request).block() ?: ExecutionSnapshot(
+        request.javaClass
+        return executeUntilTerminated(request).toFuture() ?: ExecutionSnapshot(
             Logs.empty(),
             InitialJobSnapshot,
             InitialPodSnapshot
